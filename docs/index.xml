@@ -6,19 +6,19 @@
     <description>Recent content on Datatheque</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 01 Sep 2017 21:33:31 -0400</lastBuildDate>
+    <lastBuildDate>Fri, 01 Sep 2017 22:33:52 -0400</lastBuildDate>
     
 	<atom:link href="http://www.datatheque.com/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
-      <title>Notebook</title>
-      <link>http://www.datatheque.com/posts/notebook/</link>
-      <pubDate>Fri, 01 Sep 2017 21:33:31 -0400</pubDate>
+      <title>New Notebook</title>
+      <link>http://www.datatheque.com/posts/new-notebook/</link>
+      <pubDate>Fri, 01 Sep 2017 22:33:52 -0400</pubDate>
       
-      <guid>http://www.datatheque.com/posts/notebook/</guid>
-      <description>  Hello Notebook!
-   In&amp;nbsp;[1]: print(1 + 1)      2       In&amp;nbsp;[&amp;nbsp;]:       </description>
+      <guid>http://www.datatheque.com/posts/new-notebook/</guid>
+      <description>  Hello Grace!
+   In&amp;nbsp;[1]: print(1 + 1)      2       </description>
     </item>
     
     <item>
