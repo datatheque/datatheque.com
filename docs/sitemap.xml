@@ -3,6 +3,11 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
+    <loc>http://www.datatheque.com/posts/notebook/</loc>
+    <lastmod>2017-09-01T21:33:31-04:00</lastmod>
+  </url>
+  
+  <url>
     <loc>http://www.datatheque.com/posts/my-first-post/</loc>
     <lastmod>2017-09-01T19:30:04-04:00</lastmod>
   </url>
@@ -14,13 +19,13 @@
   
   <url>
     <loc>http://www.datatheque.com/</loc>
-    <lastmod>2017-09-01T19:30:04-04:00</lastmod>
+    <lastmod>2017-09-01T21:33:31-04:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>http://www.datatheque.com/posts/</loc>
-    <lastmod>2017-09-01T19:30:04-04:00</lastmod>
+    <lastmod>2017-09-01T21:33:31-04:00</lastmod>
     <priority>0</priority>
   </url>
   
