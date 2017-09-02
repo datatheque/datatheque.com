@@ -1,0 +1,4 @@
+baseURL = "http://www.datatheque.com/"
+languageCode = "en-us"
+title = "Datatheque"
+theme = "hyde"
