@@ -4,5 +4,8 @@ title = "datathèque"
 theme = "hyde"
 publishDir = "docs"
 
-[params]
-  description = "An  open source and mobile first theme"
+[[menu.main]]
+    name = "About Me"
+    weight = -110
+    identifier = "about"
+    url = "/about/"

@@ -20,5 +20,14 @@
       <description>Motivation&amp;#182; I was looking to run association analysis in Python using the apriori algorithm to derive rules of the form {A} -&amp;gt; {B}. However, I quickly discovered that it&#39;s not part of the standard Python machine learning libraries. Although there are some implementations that exist, I could not find one capable of handling large datasets. &#34;Large&#34; in my case was an orders dataset with 32 million records, containing 3.2 million unique orders and about 50K unique items (file size just over 1 GB).</description>
     </item>
     
+    <item>
+      <title>Grace Tenorio</title>
+      <link>http://www.datatheque.com/about/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>http://www.datatheque.com/about/</guid>
+      <description>Grace Tenorio is a senior data analyst, with 13+ years of experience in data and technology. Previously at IBM building data infrastructure to support Canadian banks, she moved on to the field of data science where she has worked closely with brands such as Nissan, Infiniti, McDonald’s, Sears and Indigo. She holds a degree in Computer Science and Statistics from the University of Toronto.</description>
+    </item>
+    
   </channel>
 </rss>
