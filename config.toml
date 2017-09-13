@@ -1,5 +1,8 @@
 baseURL = "http://www.datatheque.com/"
 languageCode = "en-us"
-title = "Datatheque"
+title = "datathèque"
 theme = "hyde"
 publishDir = "docs"
+
+[params]
+  description = "An  open source and mobile first theme"

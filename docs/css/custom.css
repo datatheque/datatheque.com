@@ -1,3 +1,65 @@
+html {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+body, h1, h2, h3, h4, h5, h6 {
+    color: black;
+}
+
+.sidebar-about h1 {
+    font-size: 2.75em;
+}
+
+.lead {
+    font-size: 1em;
+}
+
+.copyright {
+    font-size: 0.8em;
+}
+
+h1 {
+    font-size: 1.8em;
+}
+
+h3 {
+    font-size: 1.2em;
+}
+
+h4 {
+    font-size: 1em;
+}
+
+.text_cell {
+    font-size: 14px;
+}
+
+.anchor-link {
+    display: none;
+}
+
+.post-date {
+    font-size: 16px;
+}
+
+code, pre {
+    font-family: Menlo, Monaco, "Courier New", monospace;
+}
+
+.code_cell {
+    font-size: 12px;
+}
+
+pre code {
+    font-size: 12px;
+}
+
+pre {
+    font-size: 12px;
+    overflow: scroll;
+    white-space: pre;
+}
+
 /************** Jupyter Notebook CSS ************************/
 .input_prompt {
     color: #0066cc;
@@ -6,8 +68,7 @@
     color:#cc0000;
 }
 .prompt{
-    font-family: monospace;
-    font-size: 14px;
+    display: none;
 }
 .c, c1 {
     color: #408080;

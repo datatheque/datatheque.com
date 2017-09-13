@@ -1,33 +1,23 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Posts on Datatheque</title>
+    <title>Posts on datathèque</title>
     <link>http://www.datatheque.com/posts/</link>
-    <description>Recent content in Posts on Datatheque</description>
+    <description>Recent content in Posts on datathèque</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 01 Sep 2017 22:33:52 -0400</lastBuildDate>
+    <lastBuildDate>Tue, 12 Sep 2017 21:17:08 -0400</lastBuildDate>
     
 	<atom:link href="http://www.datatheque.com/posts/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
-      <title>New Notebook</title>
-      <link>http://www.datatheque.com/posts/new-notebook/</link>
-      <pubDate>Fri, 01 Sep 2017 22:33:52 -0400</pubDate>
+      <title>Association Rules Mining Using Python Generators to Handle Large Dataset</title>
+      <link>http://www.datatheque.com/posts/association-analysis/</link>
+      <pubDate>Tue, 12 Sep 2017 21:17:08 -0400</pubDate>
       
-      <guid>http://www.datatheque.com/posts/new-notebook/</guid>
-      <description>  Hello Grace!
-   In&amp;nbsp;[1]: print(1 + 1)      2       </description>
-    </item>
-    
-    <item>
-      <title>My First Post</title>
-      <link>http://www.datatheque.com/posts/my-first-post/</link>
-      <pubDate>Fri, 01 Sep 2017 19:30:04 -0400</pubDate>
-      
-      <guid>http://www.datatheque.com/posts/my-first-post/</guid>
-      <description>Hello World!</description>
+      <guid>http://www.datatheque.com/posts/association-analysis/</guid>
+      <description>Motivation&amp;#182; I was looking to run association analysis in Python using the apriori algorithm to derive rules of the form {A} -&amp;gt; {B}. However, I quickly discovered that it&#39;s not part of the standard Python machine learning libraries. Although there are some implementations that exist, I could not find one capable of handling large datasets. &#34;Large&#34; in my case was an orders dataset with 32 million records, containing 3.2 million unique orders and about 50K unique items (file size just over 1 GB).</description>
     </item>
     
   </channel>
