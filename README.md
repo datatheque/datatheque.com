@@ -1,4 +1,4 @@
-# Datatheque
+# datatheque
 
 [Hugo Docs](https://gohugo.io/documentation/)
 
