@@ -6,6 +6,14 @@ body, h1, h2, h3, h4, h5, h6 {
     color: black;
 }
 
+.content {
+    text-align: justify;
+}
+
+.align-left {
+    text-align: left;
+}
+
 .sidebar-about h1 {
     font-size: 2.75em;
 }
@@ -58,10 +66,6 @@ pre {
     font-size: 12px;
     overflow: scroll;
     white-space: pre;
-}
-
-.align-left {
-    text-align: left;
 }
 
 /************** Jupyter Notebook CSS ************************/
