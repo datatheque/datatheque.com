@@ -13,6 +13,15 @@
           <li><a href="{{.URL}}"> {{ .Name }} </a></li>
         {{end}}
       </ul>
+
+      <ul class="sidebar-nav" style="list-style: none; font-size: 15px;">
+        <li>
+            <a href="https://github.com/datatheque">github</a>
+        </li>
+        <li><a href="https://www.kaggle.com/datatheque">kaggle</a></li>
+        <li><a href="https://twitter.com/datatheque">twitter</a></li>
+        <li><a href="https://www.linkedin.com/in/gracetenorio/">linkedin</a></li>
+      </ul>
   
       <p class="copyright">{{ with .Site.Params.copyright }}{{.}}{{ else }}&copy; {{ now.Format "2006"}}. All rights reserved. {{end}}</p>
     </div>

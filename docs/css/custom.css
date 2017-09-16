@@ -60,6 +60,10 @@ pre {
     white-space: pre;
 }
 
+.align-left {
+    text-align: left;
+}
+
 /************** Jupyter Notebook CSS ************************/
 .input_prompt {
     color: #0066cc;
