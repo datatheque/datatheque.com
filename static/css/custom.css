@@ -6,8 +6,28 @@ body, h1, h2, h3, h4, h5, h6 {
     color: black;
 }
 
-.content {
+.cell {
     text-align: justify;
+}
+
+.icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    stroke-width: 0;
+    stroke: currentColor;
+    fill: currentColor;
+}
+
+.social-icons {
+    list-style: none; 
+    font-size: 20px;
+    padding: 0;
+}
+
+.social-icons > li {
+    display: inline-block;
+    padding-right: 10px;
 }
 
 .align-left {
@@ -66,6 +86,24 @@ pre {
     font-size: 12px;
     overflow: scroll;
     white-space: pre;
+    word-wrap: normal;
+}
+
+.about {
+    display:flex;
+    padding:20px;
+    flex-wrap:wrap;
+    margin-left:-20px
+}
+
+.about > .image {
+    flex: 0 0 200px;
+}
+
+.about > .profile {
+    text-align:justify;
+    flex: 1 0 250px;
+    padding-left:20px;
 }
 
 /************** Jupyter Notebook CSS ************************/
