@@ -6,10 +6,19 @@
     <description>Recent content in Posts on datathèque</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 12 Sep 2017 21:17:08 -0400</lastBuildDate>
+    <lastBuildDate>Sun, 05 Nov 2017 16:03:03 -0500</lastBuildDate>
     
 	<atom:link href="http://www.datatheque.com/posts/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>User-User Collaborative Filtering Using Neo4j Graph Database</title>
+      <link>http://www.datatheque.com/posts/collaborative-filtering/</link>
+      <pubDate>Sun, 05 Nov 2017 16:03:03 -0500</pubDate>
+      
+      <guid>http://www.datatheque.com/posts/collaborative-filtering/</guid>
+      <description>Motivation&amp;#182; Recommendation systems fall under two categories: personalized and non-personalized recommenders. My previous post on association rules mining is an example of a non-personalized recommender, as the recommendations generated are not tailored to a specific user. By contrast, a personalized recommender system takes into account user preferences in order to make recommendations for that user. There are various personalized recommender algorithms, and in this post, I will be implementing user-user collaborative filtering.</description>
+    </item>
     
     <item>
       <title>Association Rules Mining Using Python Generators to Handle Large Datasets</title>

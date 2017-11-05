@@ -95,6 +95,2704 @@
       
   <div class="post">
     <h1 class="post-title">
+      <a href="http://www.datatheque.com/posts/collaborative-filtering/">
+        User-User Collaborative Filtering Using Neo4j Graph Database
+      </a>
+    </h1>
+
+    <span class="post-date">Sun, Nov 5, 2017</span>
+
+    <div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h3 id="Motivation">Motivation<a class="anchor-link" href="#Motivation">&#182;</a></h3>
+      <p>Recommendation systems fall under two categories: personalized and non-personalized recommenders. My previous post
+        on association rules mining is an example of a non-personalized recommender, as the recommendations generated are
+        not tailored to a specific user. By contrast, a personalized recommender system takes into account user preferences
+        in order to make recommendations for that user. There are various personalized recommender algorithms, and in this
+        post, I will be implementing user-user collaborative filtering. This algorithm finds users similar to the target
+        user in order to generate recommendations for the target user. And to add to the fun, I will be implementing the
+        algorithm using a graph database versus the more traditional approach of matrix factorization.</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h3 id="User-User-Collaborative-Filtering">User-User Collaborative Filtering<a class="anchor-link" href="#User-User-Collaborative-Filtering">&#182;</a></h3>
+      <p>This personalized recommender algorithm assumes that past agreements predict future agreements. It uses the concept
+        of similarity in order to identify users that are "like" the target user in terms of their preferences. Users identified
+        as most similar to the target user become part of the target user's neighbourhood. Preferences of these neighbours
+        are then used to generate recommendations for the target user.</p>
+      <p>Concretely, here are the steps we will be implementing to generate recommendations for an online grocer during the
+        user check-out process:</p>
+      <ol>
+        <li>Select a similarity metric to quantify likeness between users in the system.</li>
+        <li>For each user pair, compute similarity metric.</li>
+        <li>For each target user, select the top k neighbours based on the similarity metric.</li>
+        <li>Identify products purchased by the top k neighbours that have not been purchased by the target user.</li>
+        <li>Rank these products by the number of purchasing neighbours.</li>
+        <li>Recommend the top n products to the target user.</li>
+      </ol>
+      <p>In this particular demonstration, we are building a recommender system based on the preferences of 100 users. As such,
+        we would like the neighbourhood size, k, to be large enough to identify clear agreement between users, but not too
+        large that we end up including those that are not very similar to the target user. Hence we choose k=10. Secondly,
+        in the context of a user check-out application for an online grocer, the goal is to increase user basket by surfacing
+        products that are as relevant as possible, without overwhelming the user. Therefore we limit the number of recommendations
+        to n=10 products per user.</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h3 id="Jaccard-Index">Jaccard Index<a class="anchor-link" href="#Jaccard-Index">&#182;</a></h3>
+      <p>The Jaccard index measures similarity between two sets, with values ranging from 0 to 1. A value of 0 indicates that
+        the two sets have no elements in common, while a value of 1 implies that the two sets are identical. Given two sets
+        A and B, the Jaccard index is computed as follows:</p>
+      \begin{align*} J(A,B) = \frac{| A \cap B |} {| A \cup B |} \end{align*}
+      <p>The numerator is the number of elements that A and B have in common, while the denominator is the number of elements
+        that are unique to each set.</p>
+      <p>In this implementation of user-user collaborative filtering, we will be using the Jaccard index to measure similarity
+        between two users. This is primarily due to the sparse nature of the data, where there is a large number of products
+        and each user purchases only a small fraction of those products. If we were to model our user preferences using binary
+        attributes (ie: 1 if user purchased product X and 0 if user did not purchase product X), we would have a lot of 0s
+        and very few 1s. The Jaccard index is effective in this case, as it eliminates matching attributes that have a value
+        of 0 for both users. In other words, when computing similarity between two users, we only consider products that
+        have been purchased, either by both users, or at least one of the users. Another great thing about the Jaccard index
+        is that it accounts for cases where one user purchases significantly more products than the user it's being compared
+        to. This can result in higher overlap of products purchased between the two, but this does not necessarily mean that
+        the two users are similar. With the equation above, we see that the denominator will be large, thereby resulting
+        in a smaller Jaccard index value.</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h3 id="Graph-Database">Graph Database<a class="anchor-link" href="#Graph-Database">&#182;</a></h3>
+      <p>A graph database is a way of representing and storing data. Unlike a relational database which represents data as rows
+        and columns, data in a graph database is represented using nodes, edges and properties. This representation makes
+        graph databases conducive to storing data that is inherently connected. For our implementation of user-user collaborative
+        filtering, we are interested in the relationships that exist between users based on their preferences. In particular,
+        we have a system comprised of users who <i>ordered</i> orders, and these orders <i>contain</i> products that are
+        <i>in</i> a department and <i>in</i> an aisle. These relationships are easily depicted using a property graph data
+        model:</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <p><img src="/images/neo4j_property_graph_model.jpeg" alt="Property Graph Model"></p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <p>The nodes represent entities in our system: User, Order, Product, Department and Aisle. The edges represent relationships:
+        ORDERED, CONTAINS, IN_DEPARTMENT and IN_AISLE. The attributes in the nodes represent properties (eg: a User has property
+        "user_id"). Mapping to natural language, we can generally think of nodes as nouns, edges as verbs and properties
+        as adjectives.</p>
+      <p>In this particular graph, each node type contains the same set of properties (eg: all Orders have an order_id, order_number,
+        order_day_of_week and order_hour_of_day), but one of the interesting properties of graph databases is that it is
+        schema-free. This means that a node can have an arbitrary set of properties. For example, we can have two user nodes,
+        u1 and u2, with u1 having properties such as name, address and phone number, and u2 having properties such as name
+        and email. The concept of a schema-free model also applies to the relationships that exist in the graph.</p>
+      <p>We will be implementing the property graph model above using Neo4j, arguably the most popular graph database today.
+        The actual creation and querying of the database will be done using the Cypher query language, often thought of as
+        SQL for graphs.</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h3 id="Input-Dataset">Input Dataset<a class="anchor-link" href="#Input-Dataset">&#182;</a></h3>
+      <p>Similar to my post on association rules mining, we will once again be using data from Instacart. The datasets can be
+        downloaded from the link below, along with the data dictionary:</p>
+      <p>“The Instacart Online Grocery Shopping Dataset 2017”, Accessed from <a href="https://www.instacart.com/datasets/grocery-shopping-2017">https://www.instacart.com/datasets/grocery-shopping-2017</a>        on Oct 10, 2017.</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h3 id="Part-1:-Data-Preparation">Part 1: Data Preparation<a class="anchor-link" href="#Part-1:-Data-Preparation">&#182;</a></h3>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[1]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[2]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="c"># Utility functions </span>
+
+<span class="c"># Returns the size of an object in MB</span>
+<span class="k">def</span> <span class="nf">size</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s">&quot;{0:.2f} MB&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">getsizeof</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1000</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">))</span>
+
+<span class="c"># Displays dataframe dimensions, size and top 5 records</span>
+<span class="k">def</span> <span class="nf">inspect_df</span><span class="p">(</span><span class="n">df_name</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s">&#39;{0} --- dimensions: {1};  size: {2}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">df_name</span><span class="p">,</span> <span class="n">df</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">size</span><span class="p">(</span><span class="n">df</span><span class="p">)))</span>  
+    <span class="n">display</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+    
+<span class="c"># Exports dataframe to CSV, the format for loading data into Neo4j </span>
+<span class="k">def</span> <span class="nf">export_to_csv</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s">&#39;|&#39;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="k">False</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="A.-Load-user-order-data">A. Load user order data<a class="anchor-link" href="#A.-Load-user-order-data">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <p>Data from Instacart contains 3-99 orders per user. Inspecting the distribution of number of orders per user, we see
+        that users place 16 orders on average, with 75% of the user base placing at least 5 orders. For demonstration purposes,
+        we will be running collaborative filtering on a random sample of 100 users who purchased at least 5 orders.</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[9]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="n">min_orders</span>   <span class="o">=</span> <span class="mi">5</span>     <span class="c"># minimum order count per user</span>
+<span class="n">sample_count</span> <span class="o">=</span> <span class="mi">100</span>   <span class="c"># number of users to select randomly</span>
+
+<span class="c"># Load data from evaluation set &quot;prior&quot; (please see data dictionary for definition of &#39;eval_set&#39;) </span>
+<span class="n">order_user</span>           <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s">&#39;orders.csv&#39;</span><span class="p">)</span>
+<span class="n">order_user</span>           <span class="o">=</span> <span class="n">order_user</span><span class="p">[</span><span class="n">order_user</span><span class="p">[</span><span class="s">&#39;eval_set&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;prior&#39;</span><span class="p">]</span>
+
+<span class="c"># Get distribution of number of orders per user</span>
+<span class="n">user_order_count</span>     <span class="o">=</span> <span class="n">order_user</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">&#39;user_id&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">agg</span><span class="p">({</span><span class="s">&#39;order_id&#39;</span><span class="p">:</span><span class="s">&#39;count&#39;</span><span class="p">})</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s">&#39;order_id&#39;</span><span class="p">:</span><span class="s">&#39;num_orders&#39;</span><span class="p">})</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s">&#39;Distribution of number of orders per user:&#39;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">user_order_count</span><span class="p">[</span><span class="s">&#39;num_orders&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">describe</span><span class="p">())</span>
+
+<span class="c"># Select users who purchased at least &#39;min_orders&#39;</span>
+<span class="n">user_order_atleast_x</span> <span class="o">=</span> <span class="n">user_order_count</span><span class="p">[</span><span class="n">user_order_count</span><span class="p">[</span><span class="s">&#39;num_orders&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">min_orders</span><span class="p">]</span>
+
+<span class="c"># For reproducibility, set seed before taking a random sample</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1111</span><span class="p">)</span>
+<span class="n">user_sample</span>          <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">user_order_atleast_x</span><span class="p">[</span><span class="s">&#39;user_id&#39;</span><span class="p">],</span> <span class="n">sample_count</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="k">False</span><span class="p">)</span>
+
+<span class="c"># Subset &#39;order_user&#39; to include records associated with the 100 randomly selected users</span>
+<span class="n">order_user</span>           <span class="o">=</span> <span class="n">order_user</span><span class="p">[</span><span class="n">order_user</span><span class="p">[</span><span class="s">&#39;user_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">user_sample</span><span class="p">)]</span>
+<span class="n">order_user</span>           <span class="o">=</span> <span class="n">order_user</span><span class="p">[[</span><span class="s">&#39;order_id&#39;</span><span class="p">,</span><span class="s">&#39;user_id&#39;</span><span class="p">,</span><span class="s">&#39;order_number&#39;</span><span class="p">,</span><span class="s">&#39;order_dow&#39;</span><span class="p">,</span><span class="s">&#39;order_hour_of_day&#39;</span><span class="p">]]</span>
+<span class="n">inspect_df</span><span class="p">(</span><span class="s">&#39;order_user&#39;</span><span class="p">,</span> <span class="n">order_user</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+        <div class="output_subarea output_stream output_stdout output_text">
+          <pre>Distribution of number of orders per user:
+</pre>
+        </div>
+      </div>
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+
+
+        <div class="output_text output_subarea ">
+          <pre>count    206209.000000
+mean         15.590367
+std          16.654774
+min           3.000000
+25%           5.000000
+50%           9.000000
+75%          19.000000
+max          99.000000
+Name: num_orders, dtype: float64</pre>
+        </div>
+
+      </div>
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+        <div class="output_subarea output_stream output_stdout output_text">
+          <pre>order_user --- dimensions: (1901, 5);  size: 0.09 MB
+</pre>
+        </div>
+      </div>
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+
+        <div class="output_html rendered_html output_subarea ">
+          <div>
+            <style>
+              .dataframe thead tr:only-child th {
+                text-align: right;
+              }
+
+              .dataframe thead th {
+                text-align: left;
+              }
+
+              .dataframe tbody tr th {
+                vertical-align: top;
+              }
+            </style>
+            <table border="1" class="dataframe">
+              <thead>
+                <tr style="text-align: right;">
+                  <th></th>
+                  <th>order_id</th>
+                  <th>user_id</th>
+                  <th>order_number</th>
+                  <th>order_dow</th>
+                  <th>order_hour_of_day</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th>11334</th>
+                  <td>2808127</td>
+                  <td>701</td>
+                  <td>1</td>
+                  <td>2</td>
+                  <td>14</td>
+                </tr>
+                <tr>
+                  <th>11335</th>
+                  <td>2677145</td>
+                  <td>701</td>
+                  <td>2</td>
+                  <td>3</td>
+                  <td>11</td>
+                </tr>
+                <tr>
+                  <th>11336</th>
+                  <td>740361</td>
+                  <td>701</td>
+                  <td>3</td>
+                  <td>1</td>
+                  <td>13</td>
+                </tr>
+                <tr>
+                  <th>11337</th>
+                  <td>2866491</td>
+                  <td>701</td>
+                  <td>4</td>
+                  <td>3</td>
+                  <td>12</td>
+                </tr>
+                <tr>
+                  <th>11338</th>
+                  <td>1676999</td>
+                  <td>701</td>
+                  <td>5</td>
+                  <td>4</td>
+                  <td>11</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="B.-Load-order-details-data">B. Load order details data<a class="anchor-link" href="#B.-Load-order-details-data">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[10]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="c"># Load orders associated with our 100 selected users, along with the products contained in those orders</span>
+<span class="n">order_product</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s">&#39;order_products__prior.csv&#39;</span><span class="p">)</span>
+<span class="n">order_product</span> <span class="o">=</span> <span class="n">order_product</span><span class="p">[</span><span class="n">order_product</span><span class="p">[</span><span class="s">&#39;order_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">order_user</span><span class="o">.</span><span class="n">order_id</span><span class="o">.</span><span class="n">unique</span><span class="p">())][[</span><span class="s">&#39;order_id&#39;</span><span class="p">,</span><span class="s">&#39;product_id&#39;</span><span class="p">]]</span>
+<span class="n">inspect_df</span><span class="p">(</span><span class="s">&#39;order_product&#39;</span><span class="p">,</span> <span class="n">order_product</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+        <div class="output_subarea output_stream output_stdout output_text">
+          <pre>order_product --- dimensions: (19840, 2);  size: 0.48 MB
+</pre>
+        </div>
+      </div>
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+
+        <div class="output_html rendered_html output_subarea ">
+          <div>
+            <style>
+              .dataframe thead tr:only-child th {
+                text-align: right;
+              }
+
+              .dataframe thead th {
+                text-align: left;
+              }
+
+              .dataframe tbody tr th {
+                vertical-align: top;
+              }
+            </style>
+            <table border="1" class="dataframe">
+              <thead>
+                <tr style="text-align: right;">
+                  <th></th>
+                  <th>order_id</th>
+                  <th>product_id</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th>1855</th>
+                  <td>209</td>
+                  <td>39409</td>
+                </tr>
+                <tr>
+                  <th>1856</th>
+                  <td>209</td>
+                  <td>20842</td>
+                </tr>
+                <tr>
+                  <th>1857</th>
+                  <td>209</td>
+                  <td>16965</td>
+                </tr>
+                <tr>
+                  <th>1858</th>
+                  <td>209</td>
+                  <td>8021</td>
+                </tr>
+                <tr>
+                  <th>1859</th>
+                  <td>209</td>
+                  <td>23001</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="C.--Load-product-data">C. Load product data<a class="anchor-link" href="#C.--Load-product-data">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[11]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="c"># Load products purchased by our 100 selected users</span>
+<span class="n">products</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s">&#39;products.csv&#39;</span><span class="p">)</span>
+<span class="n">products</span> <span class="o">=</span> <span class="n">products</span><span class="p">[</span><span class="n">products</span><span class="p">[</span><span class="s">&#39;product_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">order_product</span><span class="o">.</span><span class="n">product_id</span><span class="o">.</span><span class="n">unique</span><span class="p">())]</span>
+<span class="n">inspect_df</span><span class="p">(</span><span class="s">&#39;products&#39;</span><span class="p">,</span> <span class="n">products</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+        <div class="output_subarea output_stream output_stdout output_text">
+          <pre>products --- dimensions: (3959, 4);  size: 0.46 MB
+</pre>
+        </div>
+      </div>
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+
+        <div class="output_html rendered_html output_subarea ">
+          <div>
+            <style>
+              .dataframe thead tr:only-child th {
+                text-align: right;
+              }
+
+              .dataframe thead th {
+                text-align: left;
+              }
+
+              .dataframe tbody tr th {
+                vertical-align: top;
+              }
+            </style>
+            <table border="1" class="dataframe">
+              <thead>
+                <tr style="text-align: right;">
+                  <th></th>
+                  <th>product_id</th>
+                  <th>product_name</th>
+                  <th>aisle_id</th>
+                  <th>department_id</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th>0</th>
+                  <td>1</td>
+                  <td>Chocolate Sandwich Cookies</td>
+                  <td>61</td>
+                  <td>19</td>
+                </tr>
+                <tr>
+                  <th>33</th>
+                  <td>34</td>
+                  <td>Peanut Butter Cereal</td>
+                  <td>121</td>
+                  <td>14</td>
+                </tr>
+                <tr>
+                  <th>44</th>
+                  <td>45</td>
+                  <td>European Cucumber</td>
+                  <td>83</td>
+                  <td>4</td>
+                </tr>
+                <tr>
+                  <th>98</th>
+                  <td>99</td>
+                  <td>Local Living Butter Lettuce</td>
+                  <td>83</td>
+                  <td>4</td>
+                </tr>
+                <tr>
+                  <th>115</th>
+                  <td>116</td>
+                  <td>English Muffins</td>
+                  <td>93</td>
+                  <td>3</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="D.-Load-aisle-data">D. Load aisle data<a class="anchor-link" href="#D.-Load-aisle-data">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[12]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="c"># Load entire aisle data as it contains the names related to the aisle IDs from the &#39;products&#39; data</span>
+<span class="n">aisles</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s">&#39;aisles.csv&#39;</span><span class="p">)</span>
+<span class="n">inspect_df</span><span class="p">(</span><span class="s">&#39;aisles&#39;</span><span class="p">,</span> <span class="n">aisles</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+        <div class="output_subarea output_stream output_stdout output_text">
+          <pre>aisles --- dimensions: (134, 2);  size: 0.01 MB
+</pre>
+        </div>
+      </div>
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+
+        <div class="output_html rendered_html output_subarea ">
+          <div>
+            <style>
+              .dataframe thead tr:only-child th {
+                text-align: right;
+              }
+
+              .dataframe thead th {
+                text-align: left;
+              }
+
+              .dataframe tbody tr th {
+                vertical-align: top;
+              }
+            </style>
+            <table border="1" class="dataframe">
+              <thead>
+                <tr style="text-align: right;">
+                  <th></th>
+                  <th>aisle_id</th>
+                  <th>aisle</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th>0</th>
+                  <td>1</td>
+                  <td>prepared soups salads</td>
+                </tr>
+                <tr>
+                  <th>1</th>
+                  <td>2</td>
+                  <td>specialty cheeses</td>
+                </tr>
+                <tr>
+                  <th>2</th>
+                  <td>3</td>
+                  <td>energy granola bars</td>
+                </tr>
+                <tr>
+                  <th>3</th>
+                  <td>4</td>
+                  <td>instant foods</td>
+                </tr>
+                <tr>
+                  <th>4</th>
+                  <td>5</td>
+                  <td>marinades meat preparation</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="E.-Load-department-data">E. Load department data<a class="anchor-link" href="#E.-Load-department-data">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[13]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="c"># Load entire department data as it contains the names related to the department IDs from the &#39;products&#39; data</span>
+<span class="n">departments</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s">&#39;departments.csv&#39;</span><span class="p">)</span>
+<span class="n">inspect_df</span><span class="p">(</span><span class="s">&#39;departments&#39;</span><span class="p">,</span> <span class="n">departments</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+        <div class="output_subarea output_stream output_stdout output_text">
+          <pre>departments --- dimensions: (21, 2);  size: 0.00 MB
+</pre>
+        </div>
+      </div>
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+
+        <div class="output_html rendered_html output_subarea ">
+          <div>
+            <style>
+              .dataframe thead tr:only-child th {
+                text-align: right;
+              }
+
+              .dataframe thead th {
+                text-align: left;
+              }
+
+              .dataframe tbody tr th {
+                vertical-align: top;
+              }
+            </style>
+            <table border="1" class="dataframe">
+              <thead>
+                <tr style="text-align: right;">
+                  <th></th>
+                  <th>department_id</th>
+                  <th>department</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th>0</th>
+                  <td>1</td>
+                  <td>frozen</td>
+                </tr>
+                <tr>
+                  <th>1</th>
+                  <td>2</td>
+                  <td>other</td>
+                </tr>
+                <tr>
+                  <th>2</th>
+                  <td>3</td>
+                  <td>bakery</td>
+                </tr>
+                <tr>
+                  <th>3</th>
+                  <td>4</td>
+                  <td>produce</td>
+                </tr>
+                <tr>
+                  <th>4</th>
+                  <td>5</td>
+                  <td>alcohol</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="F.-Export-dataframes-to-CSV,-which-in-turn-will-be-loaded-into-Neo4j">F. Export dataframes to CSV, which in turn will be loaded into Neo4j<a class="anchor-link" href="#F.-Export-dataframes-to-CSV,-which-in-turn-will-be-loaded-into-Neo4j">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[14]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="n">export_to_csv</span><span class="p">(</span><span class="n">order_user</span><span class="p">,</span>    <span class="s">&#39;~/neo4j_instacart/import/neo4j_order_user.csv&#39;</span><span class="p">)</span>
+<span class="n">export_to_csv</span><span class="p">(</span><span class="n">order_product</span><span class="p">,</span> <span class="s">&#39;~/neo4j_instacart/import/neo4j_order_product.csv&#39;</span><span class="p">)</span>    
+<span class="n">export_to_csv</span><span class="p">(</span><span class="n">products</span><span class="p">,</span>      <span class="s">&#39;~/neo4j_instacart/import/neo4j_products.csv&#39;</span><span class="p">)</span>
+<span class="n">export_to_csv</span><span class="p">(</span><span class="n">aisles</span><span class="p">,</span>        <span class="s">&#39;~/neo4j_instacart/import/neo4j_aisles.csv&#39;</span><span class="p">)</span>
+<span class="n">export_to_csv</span><span class="p">(</span><span class="n">departments</span><span class="p">,</span>   <span class="s">&#39;~/neo4j_instacart/import/neo4j_departments.csv&#39;</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h3 id="Part-2:--Create-Neo4j-Graph-Database">Part 2: Create Neo4j Graph Database<a class="anchor-link" href="#Part-2:--Create-Neo4j-Graph-Database">&#182;</a></h3>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="A.-Set-up-authentication-and-connection-to-Neo4j">A. Set up authentication and connection to Neo4j<a class="anchor-link" href="#A.-Set-up-authentication-and-connection-to-Neo4j">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[15]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="c"># py2neo allows us to work with Neo4j from within Python</span>
+<span class="kn">from</span> <span class="nn">py2neo</span> <span class="k">import</span> <span class="n">authenticate</span><span class="p">,</span> <span class="n">Graph</span>
+
+<span class="c"># Set up authentication parameters</span>
+<span class="n">authenticate</span><span class="p">(</span><span class="s">&quot;localhost:7474&quot;</span><span class="p">,</span> <span class="s">&quot;neo4j&quot;</span><span class="p">,</span> <span class="s">&quot;xxxxxxxx&quot;</span><span class="p">)</span> 
+
+<span class="c"># Connect to authenticated graph database</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">(</span><span class="s">&quot;http://localhost:7474/db/data/&quot;</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="B.-Start-with-an-empty-database,-then-create-constraints-to-ensure-uniqueness-of-nodes">B. Start with an empty database, then create constraints to ensure uniqueness of nodes<a class="anchor-link" href="#B.-Start-with-an-empty-database,-then-create-constraints-to-ensure-uniqueness-of-nodes">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[16]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="c"># Each time this notebook is run, we start with an empty graph database</span>
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;MATCH (n) DETACH DELETE n;&quot;</span><span class="p">)</span>    
+
+<span class="c"># We drop and recreate our node constraints</span>
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;DROP CONSTRAINT ON (order:Order)             ASSERT order.order_id            IS UNIQUE;&quot;</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;DROP CONSTRAINT ON (user:User)               ASSERT user.user_id              IS UNIQUE;&quot;</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;DROP CONSTRAINT ON (product:Product)         ASSERT product.product_id        IS UNIQUE;&quot;</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;DROP CONSTRAINT ON (aisle:Aisle)             ASSERT aisle.aisle_id            IS UNIQUE;&quot;</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;DROP CONSTRAINT ON (department:Department)   ASSERT department.department_id  IS UNIQUE;&quot;</span><span class="p">)</span>
+
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;CREATE CONSTRAINT ON (order:Order)           ASSERT order.order_id            IS UNIQUE;&quot;</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;CREATE CONSTRAINT ON (user:User)             ASSERT user.user_id              IS UNIQUE;&quot;</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;CREATE CONSTRAINT ON (product:Product)       ASSERT product.product_id        IS UNIQUE;&quot;</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;CREATE CONSTRAINT ON (aisle:Aisle)           ASSERT aisle.aisle_id            IS UNIQUE;&quot;</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;CREATE CONSTRAINT ON (department:Department) ASSERT department.department_id  IS UNIQUE;&quot;</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt output_prompt">Out[16]:</div>
+
+
+
+
+        <div class="output_text output_subarea output_execute_result">
+          <pre>&lt;py2neo.database.Cursor at 0x109ea3e10&gt;</pre>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="C.-Load-product-data-into-Neo4j">C. Load product data into Neo4j<a class="anchor-link" href="#C.-Load-product-data-into-Neo4j">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[19]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="n">query</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">        // Load and commit every 500 records</span>
+<span class="s">        USING PERIODIC COMMIT 500 </span>
+<span class="s">        LOAD CSV WITH HEADERS FROM &#39;file:///neo4j_products.csv&#39; AS line FIELDTERMINATOR &#39;|&#39; </span>
+<span class="s">        WITH line </span>
+<span class="s">        </span>
+<span class="s">        // Create Product, Aisle and Department nodes</span>
+<span class="s">        CREATE (product:Product {product_id: toInteger(line.product_id), product_name: line.product_name}) </span>
+<span class="s">        MERGE  (aisle:Aisle {aisle_id: toInteger(line.aisle_id)}) </span>
+<span class="s">        MERGE  (department:Department {department_id: toInteger(line.department_id)}) </span>
+
+<span class="s">        // Create relationships between products and aisles &amp; products and departments </span>
+<span class="s">        CREATE (product)-[:IN_AISLE]-&gt;(aisle) </span>
+<span class="s">        CREATE (product)-[:IN_DEPARTMENT]-&gt;(department);</span>
+<span class="s">        &quot;&quot;&quot;</span>
+
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt output_prompt">Out[19]:</div>
+
+
+
+
+        <div class="output_text output_subarea output_execute_result">
+          <pre>&lt;py2neo.database.Cursor at 0x10a9e4208&gt;</pre>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="D.-Load-aisle-data-into-Neo4j">D. Load aisle data into Neo4j<a class="anchor-link" href="#D.-Load-aisle-data-into-Neo4j">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[137]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="n">query</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">        // Aisle data is very small, so there is no need to do periodic commits</span>
+<span class="s">        LOAD CSV WITH HEADERS FROM &#39;file:///neo4j_aisles.csv&#39; AS line FIELDTERMINATOR &#39;|&#39; </span>
+<span class="s">        WITH line </span>
+<span class="s">        </span>
+<span class="s">        // For each Aisle node, set property &#39;aisle_name&#39; </span>
+<span class="s">        MATCH (aisle:Aisle {aisle_id: toInteger(line.aisle_id)}) </span>
+<span class="s">        SET aisle.aisle_name = line.aisle;</span>
+<span class="s">        &quot;&quot;&quot;</span>
+
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt output_prompt">Out[137]:</div>
+
+
+
+
+        <div class="output_text output_subarea output_execute_result">
+          <pre>&lt;py2neo.database.Cursor at 0x1101457b8&gt;</pre>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="E.-Load-department-data-into-Neo4j">E. Load department data into Neo4j<a class="anchor-link" href="#E.-Load-department-data-into-Neo4j">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[138]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="n">query</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">        // Department data is very small, so there is no need to do periodic commits</span>
+<span class="s">        LOAD CSV WITH HEADERS FROM &#39;file:///neo4j_departments.csv&#39; AS line FIELDTERMINATOR &#39;|&#39; </span>
+<span class="s">        WITH line</span>
+<span class="s">        </span>
+<span class="s">        // For each Department node, set property &#39;department_name&#39; </span>
+<span class="s">        MATCH (department:Department {department_id: toInteger(line.department_id)}) </span>
+<span class="s">        SET department.department_name = line.department;</span>
+<span class="s">        &quot;&quot;&quot;</span>
+
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt output_prompt">Out[138]:</div>
+
+
+
+
+        <div class="output_text output_subarea output_execute_result">
+          <pre>&lt;py2neo.database.Cursor at 0x11751acf8&gt;</pre>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="F.-Load-order-details-data-into-Neo4j">F. Load order details data into Neo4j<a class="anchor-link" href="#F.-Load-order-details-data-into-Neo4j">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[139]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="n">query</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">        // Load and commit every 500 records        </span>
+<span class="s">        USING PERIODIC COMMIT 500</span>
+<span class="s">        LOAD CSV WITH HEADERS FROM &#39;file:///neo4j_order_product.csv&#39; AS line FIELDTERMINATOR &#39;|&#39;</span>
+<span class="s">        WITH line</span>
+<span class="s">        </span>
+<span class="s">        // Create Order nodes and then create relationships between orders and products</span>
+<span class="s">        MERGE (order:Order {order_id: toInteger(line.order_id)})</span>
+<span class="s">        MERGE (product:Product {product_id: toInteger(line.product_id)})</span>
+<span class="s">        CREATE (order)-[:CONTAINS]-&gt;(product);</span>
+<span class="s">        &quot;&quot;&quot;</span>
+
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt output_prompt">Out[139]:</div>
+
+
+
+
+        <div class="output_text output_subarea output_execute_result">
+          <pre>&lt;py2neo.database.Cursor at 0x110145160&gt;</pre>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="G.-Load-user-order-data--into-Neo4j">G. Load user order data into Neo4j<a class="anchor-link" href="#G.-Load-user-order-data--into-Neo4j">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[140]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="n">query</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">        // Load and commit every 500 records </span>
+<span class="s">        USING PERIODIC COMMIT 500</span>
+<span class="s">        LOAD CSV WITH HEADERS FROM &#39;file:///neo4j_order_user.csv&#39; AS line FIELDTERMINATOR &#39;|&#39;</span>
+<span class="s">        WITH line</span>
+<span class="s">        </span>
+<span class="s">        // Create User nodes and then create relationships between users and orders </span>
+<span class="s">        MERGE (order:Order {order_id: toInteger(line.order_id)})</span>
+<span class="s">        MERGE (user:User   {user_id:  toInteger(line.user_id)})</span>
+
+<span class="s">        // Create relationships between users and orders, then set Order properties</span>
+<span class="s">        CREATE(user)-[o:ORDERED]-&gt;(order)              </span>
+<span class="s">        SET order.order_number = toInteger(line.order_number),</span>
+<span class="s">            order.order_day_of_week = toInteger(line.order_dow), </span>
+<span class="s">            order.order_hour_of_day = toInteger(line.order_hour_of_day);</span>
+<span class="s">        &quot;&quot;&quot;</span>
+
+<span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt output_prompt">Out[140]:</div>
+
+
+
+
+        <div class="output_text output_subarea output_execute_result">
+          <pre>&lt;py2neo.database.Cursor at 0x1149251d0&gt;</pre>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h4 id="H.-What-our-graph-looks-like">H. What our graph looks like<a class="anchor-link" href="#H.-What-our-graph-looks-like">&#182;</a></h4>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <p>This is what the nodes and relationships we have created look like in Neo4j for a small subset of the data. Please
+        use the legend on the top left corner only to determine the colours associated with the different nodes (ie: ignore
+        the numbers).</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <p><img src="/images/neo4j_instacart_graph.jpeg" alt="Instacart Graph"></p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h3 id="Part-3:-Implement-User-User-Collaborative-Filtering-Algorithm">Part 3: Implement User-User Collaborative Filtering Algorithm<a class="anchor-link" href="#Part-3:-Implement-User-User-Collaborative-Filtering-Algorithm">&#182;</a></h3>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[221]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="c"># Implements user-user collaborative filtering using the following steps:</span>
+<span class="c">#   1. For each user pair, compute Jaccard index</span>
+<span class="c">#   2. For each target user, select top k neighbours based on Jaccard index</span>
+<span class="c">#   3. Identify products purchased by the top k neighbours that have not been purchased by the target user</span>
+<span class="c">#   4. Rank these products by the number of purchasing neighbours</span>
+<span class="c">#   5. Return the top n recommendations for each user</span>
+
+<span class="k">def</span> <span class="nf">collaborative_filtering</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">neighbourhood_size</span><span class="p">,</span> <span class="n">num_recos</span><span class="p">):</span>
+
+    <span class="n">query</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">           // Get user pairs and count of distinct products that they have both purchased</span>
+<span class="s">           MATCH (u1:User)-[:ORDERED]-&gt;(:Order)-[:CONTAINS]-&gt;(p:Product)&lt;-[:CONTAINS]-(:Order)&lt;-[:ORDERED]-(u2:User)</span>
+<span class="s">           WHERE u1 &lt;&gt; u2</span>
+<span class="s">           WITH u1, u2, COUNT(DISTINCT p) as intersection_count</span>
+
+<span class="s">           // Get count of all the distinct products that they have purchased between them</span>
+<span class="s">           MATCH (u:User)-[:ORDERED]-&gt;(:Order)-[:CONTAINS]-&gt;(p:Product)</span>
+<span class="s">           WHERE u in [u1, u2]</span>
+<span class="s">           WITH u1, u2, intersection_count, COUNT(DISTINCT p) as union_count</span>
+
+<span class="s">           // Compute Jaccard index</span>
+<span class="s">           WITH u1, u2, intersection_count, union_count, (intersection_count*1.0/union_count) as jaccard_index</span>
+
+<span class="s">           // Get top k neighbours based on Jaccard index</span>
+<span class="s">           ORDER BY jaccard_index DESC, u2.user_id</span>
+<span class="s">           WITH u1, COLLECT(u2)[0..{k}] as neighbours</span>
+<span class="s">           WHERE LENGTH(neighbours) = {k}                                              // only want users with enough neighbours</span>
+<span class="s">           UNWIND neighbours as neighbour</span>
+<span class="s">           WITH u1, neighbour</span>
+
+<span class="s">           // Get top n recommendations from the selected neighbours</span>
+<span class="s">           MATCH (neighbour)-[:ORDERED]-&gt;(:Order)-[:CONTAINS]-&gt;(p:Product)             // get all products bought by neighbour</span>
+<span class="s">           WHERE not (u1)-[:ORDERED]-&gt;(:Order)-[:CONTAINS]-&gt;(p)                        // which target user has not already bought</span>
+<span class="s">           WITH u1, p, COUNT(DISTINCT neighbour) as cnt                                // count neighbours who purchased product</span>
+<span class="s">           ORDER BY u1.user_id, cnt DESC                                               // sort by count desc</span>
+<span class="s">           RETURN u1.user_id as user, COLLECT(p.product_name)[0..{n}] as recos         // return top n products</span>
+<span class="s">           &quot;&quot;&quot;</span>
+
+    <span class="n">recos</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">neighbourhood_size</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="n">num_recos</span><span class="p">):</span>
+        <span class="n">recos</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">recos</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h3 id="Part-4:-Execute-User-User-Collaborative-Filtering">Part 4: Execute User-User Collaborative Filtering<a class="anchor-link" href="#Part-4:-Execute-User-User-Collaborative-Filtering">&#182;</a></h3>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <p>Our collaborative filtering function expects 3 parameters: a graph database, the neighbourhood size and the number
+        of products to recommend to each user. A reminder that our graph database, g, contains nodes and relationships pertaining
+        to user orders. And as previously discussed, we have chosen k=10 as the neighbourhood size and n=10 as the number
+        of products to recommend to each of our users. We now invoke our collaborative filtering function using these parameters.</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[277]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="o">%%</span><span class="k">time</span>
+recommendations = collaborative_filtering(g,10,10)
+display(recommendations)
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+
+
+        <div class="output_text output_subarea ">
+          <pre>{701: [&#39;Strawberries&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Limes&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Organic Black Beans&#39;,
+  &#39;Organic Fuji Apple&#39;,
+  &#39;Red Vine Tomato&#39;],
+ 1562: [&#39;Organic Whole String Cheese&#39;,
+  &#39;Honeycrisp Apple&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Sparkling Water Grapefruit&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Ginger Root&#39;,
+  &#39;Asparagus&#39;,
+  &#39;Salted Butter&#39;,
+  &#39;Whole Almonds&#39;],
+ 4789: [&#39;Organic Granny Smith Apple&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Green Cabbage&#39;,
+  &#39;Organic Cilantro&#39;,
+  &#39;Creamy Almond Butter&#39;,
+  &#39;Corn Tortillas&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Unsweetened Almondmilk&#39;,
+  &#39;Organic Blackberries&#39;,
+  &#39;Organic Lacinato (Dinosaur) Kale&#39;],
+ 5225: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Honeycrisp Apple&#39;,
+  &#39;Sweet Kale Salad Mix&#39;,
+  &#39;Banana&#39;,
+  &#39;Green Onions&#39;],
+ 5939: [&#39;Organic Lemon&#39;,
+  &#39;Organic Kiwi&#39;,
+  &#39;Fresh Cauliflower&#39;,
+  &#39;Organic Red Onion&#39;,
+  &#39;Organic Small Bunch Celery&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Large Extra Fancy Fuji Apple&#39;,
+  &#39;Frozen Organic Wild Blueberries&#39;],
+ 6043: [&#39;Organic Garlic&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Small Hass Avocado&#39;,
+  &#39;Organic Cilantro&#39;,
+  &#39;Organic Tomato Paste&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Grape Tomatoes&#39;],
+ 6389: [&#39;Organic Zucchini&#39;,
+  &#39;Half &amp; Half&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Penne Rigate&#39;,
+  &#39;Organic Garnet Sweet Potato (Yam)&#39;,
+  &#39;Organic Raspberries&#39;],
+ 7968: [&#39;Strawberries&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Lemon&#39;,
+  &#39;100% Recycled Paper Towels&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Grape Tomatoes&#39;],
+ 12906: [&#39;Organic Garlic&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Organic Black Beans&#39;,
+  &#39;Free &amp; Clear Natural Laundry Detergent For Sensitive Skin&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Original Hummus&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Organic Red Onion&#39;,
+  &#39;Organic Zucchini&#39;],
+ 24670: [&#39;Organic Blueberries&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Orange Bell Pepper&#39;,
+  &#39;Organic Italian Parsley Bunch&#39;,
+  &#39;Organic Cilantro&#39;,
+  &#39;Honeycrisp Apple&#39;,
+  &#39;Organic Baby Spinach&#39;],
+ 25442: [&#39;Organic Blueberries&#39;,
+  &#39;Organic Red Onion&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Baby Arugula&#39;,
+  &#39;Jalapeno Peppers&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Limes&#39;,
+  &#39;Bunched Cilantro&#39;,
+  &#39;Organic Avocado&#39;],
+ 25490: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Banana&#39;,
+  &#39;Extra Virgin Olive Oil&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Navel Orange&#39;,
+  &#39;Carrots&#39;,
+  &#39;Small Hass Avocado&#39;,
+  &#39;Organic Hass Avocado&#39;],
+ 26277: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Cereal&#39;,
+  &#39;Pure Vanilla Extract&#39;,
+  &#39;Hass Avocado Variety&#39;,
+  &#39;Peaches&#39;,
+  &#39;Original Beef Jerky&#39;,
+  &#39;Unsweetened Vanilla Almond Breeze&#39;,
+  &#39;Organic Lemonade&#39;],
+ 32976: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Apple Honeycrisp Organic&#39;,
+  &#39;Peanut Butter Creamy With Salt&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Seedless Red Grapes&#39;,
+  &#39;Organic Yellow Onion&#39;],
+ 37120: [&#39;Organic Strawberries&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Sour Cream&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Banana&#39;,
+  &#39;Carrots&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Limes&#39;,
+  &#39;Russet Potato&#39;],
+ 40286: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Sparkling Water Grapefruit&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Asparagus&#39;],
+ 42145: [&#39;Organic Baby Spinach&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Fresh Cauliflower&#39;,
+  &#39;Organic Whole Milk&#39;,
+  &#39;Organic Large Extra Fancy Fuji Apple&#39;,
+  &#39;Bunched Cilantro&#39;,
+  &#39;Organic Kiwi&#39;,
+  &#39;Organic Ginger Root&#39;,
+  &#39;Grated Parmesan&#39;],
+ 43902: [&#39;Large Lemon&#39;,
+  &#39;Banana&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Yellow Onions&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Granny Smith Apple&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Raspberries&#39;],
+ 45067: [&#39;Organic Yellow Onion&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Organic Black Beans&#39;,
+  &#39;Cucumber Kirby&#39;,
+  &#39;Bunched Cilantro&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Asparagus&#39;],
+ 47838: [&#39;Organic Ginger Root&#39;,
+  &#39;Organic Lacinato (Dinosaur) Kale&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Organic Italian Parsley Bunch&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Cucumber&#39;,
+  &#39;Organic Large Extra Fancy Fuji Apple&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Zucchini&#39;],
+ 49441: [&#39;Organic Yellow Onion&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Honeycrisp Apple&#39;,
+  &#39;White Corn&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Organic Whole String Cheese&#39;,
+  &#39;Red Vine Tomato&#39;,
+  &#39;Extra Virgin Olive Oil&#39;,
+  &#39;Pineapple Chunks&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;],
+ 50241: [&#39;Organic Raspberries&#39;,
+  &#39;Yellow Onions&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Red Vine Tomato&#39;,
+  &#39;Organic Granny Smith Apple&#39;,
+  &#39;Bunched Cilantro&#39;,
+  &#39;Organic Black Beans&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Basil Pesto&#39;,
+  &#39;Limes&#39;],
+ 51076: [&#39;Strawberries&#39;,
+  &#39;Red Onion&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Blueberries&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;,
+  &#39;Original Hummus&#39;,
+  &#39;Organic Chicken &amp; Apple Sausage&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Organic Fuji Apple&#39;,
+  &#39;Green Bell Pepper&#39;],
+ 52784: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Red Vine Tomato&#39;,
+  &#39;Bunched Cilantro&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Honeycrisp Apple&#39;,
+  &#39;Green Bell Pepper&#39;,
+  &#39;Jalapeno Peppers&#39;,
+  &#39;Banana&#39;],
+ 53304: [&#39;Organic Baby Carrots&#39;,
+  &#39;Sweet Kale Salad Mix&#39;,
+  &#39;Blackberries&#39;,
+  &#39;Celery Sticks&#39;,
+  &#39;Brussels Sprouts&#39;,
+  &#39;Apple Honeycrisp Organic&#39;,
+  &#39;Brioche Hamburger Buns&#39;,
+  &#39;Apricots&#39;,
+  &#39;Packaged Grape Tomatoes&#39;,
+  &#39;Cereal&#39;],
+ 53968: [&#39;Strawberries&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Extra Firm Tofu&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Basil&#39;,
+  &#39;Red Onion&#39;,
+  &#39;Organic Raspberries&#39;],
+ 55720: [&#39;Organic Garlic&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Asparagus&#39;,
+  &#39;Fresh Cauliflower&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Organic Tomato Cluster&#39;,
+  &#39;Red Vine Tomato&#39;,
+  &#39;Organic Red Onion&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Yellow Onion&#39;],
+ 56266: [&#39;Banana&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Roasted Red Pepper Hummus&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Honeycrisp Apple&#39;,
+  &#39;Ground Black Pepper&#39;],
+ 58959: [&#39;Organic Large Extra Fancy Fuji Apple&#39;,
+  &#39;Chicken Base, Organic&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Organic Unsweetened Almond Milk&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Grape White/Green Seedless&#39;,
+  &#39;Sparkling Lemon Water&#39;],
+ 59889: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Fresh Cauliflower&#39;,
+  &#39;Organic Black Beans&#39;],
+ 61065: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Small Bunch Celery&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Ginger Root&#39;,
+  &#39;Yellow Onions&#39;,
+  &#39;Organic Raspberries&#39;],
+ 63472: [&#39;Carrots&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Philadelphia Original Cream Cheese&#39;,
+  &#39;Half &amp; Half&#39;,
+  &#39;Gluten Free Chocolate Dipped Donuts&#39;],
+ 66265: [&#39;Blueberries&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Tilapia Filet&#39;,
+  &#39;Bartlett Pears&#39;,
+  &#39;Half &amp; Half&#39;,
+  &#39;Banana&#39;,
+  &#39;Unsweetened Almondmilk&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;],
+ 67941: [&#39;Large Lemon&#39;,
+  &#39;Organic Red Onion&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Sparkling Water Grapefruit&#39;,
+  &#39;Fresh Cauliflower&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Small Bunch Celery&#39;],
+ 69178: [&#39;Organic Blueberries&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Raspberries&#39;,
+  &#39;Banana&#39;,
+  &#39;Creamy Almond Butter&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Brussels Sprouts&#39;],
+ 72791: [&#39;Orange Bell Pepper&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Bunched Cilantro&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Sugar Snap Peas&#39;],
+ 73171: [&#39;Organic Blueberries&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Extra Virgin Olive Oil&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Basil Pesto&#39;,
+  &#39;Limes&#39;],
+ 73477: [&#39;Organic Baby Spinach&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Kiwi&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Organic Tomato Paste&#39;,
+  &#39;Organic Italian Parsley Bunch&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Organic Fuji Apple&#39;,
+  &#39;Limes&#39;],
+ 75993: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Ground Korintje Cinnamon&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Organic Zucchini&#39;],
+ 85028: [&#39;Organic Avocado&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Yellow Onions&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Bunched Cilantro&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Organic Baby Carrots&#39;],
+ 85238: [&#39;Organic Avocado&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Small Bunch Celery&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Ginger Root&#39;,
+  &#39;Organic Lemon&#39;],
+ 87350: [&#39;Organic Avocado&#39;,
+  &#39;Apple Honeycrisp Organic&#39;,
+  &#39;Original Hummus&#39;,
+  &#39;Organic Cucumber&#39;,
+  &#39;Carrots&#39;,
+  &#39;Yellow Onions&#39;,
+  &#39;Small Hass Avocado&#39;,
+  &#39;Extra Virgin Olive Oil&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Organic Blueberries&#39;],
+ 89776: [&#39;Organic Zucchini&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Red Onion&#39;,
+  &#39;Orange Bell Pepper&#39;,
+  &#39;Organic Fuji Apple&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Carrots&#39;,
+  &#39;Red Vine Tomato&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Extra Firm Tofu&#39;],
+ 93241: [&#39;Organic Strawberries&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Organic Creamy Peanut Butter&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Creamy Almond Butter&#39;,
+  &#39;Lime&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Red Bell Pepper&#39;],
+ 95686: [&#39;Banana&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Large Extra Fancy Fuji Apple&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Asparagus&#39;],
+ 96466: [&#39;Organic Zucchini&#39;,
+  &#39;Organic Small Bunch Celery&#39;,
+  &#39;Organic Fuji Apple&#39;,
+  &#39;Organic Large Extra Fancy Fuji Apple&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Fresh Cauliflower&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Michigan Organic Kale&#39;,
+  &#39;Organic Whole Strawberries&#39;,
+  &#39;Large Lemon&#39;],
+ 98570: [&#39;Strawberries&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Organic Whole String Cheese&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Original Hummus&#39;,
+  &#39;Organic Tomato Paste&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Extra Virgin Olive Oil&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;,
+  &#39;Organic Black Beans&#39;],
+ 99282: [&#39;Organic Raspberries&#39;,
+  &#39;Organic Small Bunch Celery&#39;,
+  &#39;Organic Cucumber&#39;,
+  &#39;Original Hummus&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Lemon&#39;,
+  &#39;Organic Baby Carrots&#39;],
+ 100253: [&#39;Organic Strawberries&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Bing Cherries&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Organic Lemon&#39;,
+  &#39;Organic Tomato Cluster&#39;,
+  &#39;Extra Virgin Olive Oil&#39;,
+  &#39;Organic Garlic&#39;],
+ 102099: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Red Vine Tomato&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Large Extra Fancy Fuji Apple&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Small Bunch Celery&#39;,
+  &#39;Organic Raspberries&#39;],
+ 104175: [&#39;Banana&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Extra Virgin Olive Oil&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Cucumber Kirby&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Avocado&#39;],
+ 107051: [&#39;Organic Zucchini&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Extra Firm Tofu&#39;,
+  &#39;Fresh Cauliflower&#39;,
+  &#39;Asparagus&#39;,
+  &#39;Chocolate Chip Cookie Dough Ice Cream&#39;,
+  &#39;Organic Blueberries&#39;],
+ 107931: [&#39;Large Lemon&#39;,
+  &#39;Organic Granny Smith Apple&#39;,
+  &#39;Pineapple Chunks&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Italian Parsley Bunch&#39;,
+  &#39;White Corn&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Yellow Onions&#39;],
+ 111387: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Garlic&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Lemon&#39;,
+  &#39;Organic Cilantro&#39;,
+  &#39;Clementines, Bag&#39;,
+  &#39;Organic Red Bell Pepper&#39;,
+  &#39;100% Whole Wheat Bread&#39;],
+ 114336: [&#39;Organic Strawberries&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Sweet Kale Salad Mix&#39;,
+  &#39;Blackberries&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Cereal&#39;,
+  &#39;Hass Avocados&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Meyer Lemons&#39;],
+ 114764: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Ginger Root&#39;,
+  &#39;Organic Small Bunch Celery&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Kiwi&#39;,
+  &#39;Organic Cucumber&#39;,
+  &#39;Unsweetened Almondmilk&#39;,
+  &#39;Frozen Organic Wild Blueberries&#39;],
+ 118102: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Lime Sparkling Water&#39;,
+  &#39;Organic Lacinato (Dinosaur) Kale&#39;,
+  &#39;Organic Ginger Root&#39;,
+  &#39;Organic Whole Strawberries&#39;],
+ 118981: [&#39;Large Lemon&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Fuji Apple&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Basil Pesto&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Organic Baby Carrots&#39;],
+ 120138: [&#39;Banana&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Red Onion&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Blueberries&#39;,
+  &#39;Organic Fuji Apple&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Cilantro&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;],
+ 120660: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Lemon&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Large Extra Fancy Fuji Apple&#39;,
+  &#39;Organic Hass Avocado&#39;],
+ 125120: [&#39;Organic Blueberries&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Blackberries&#39;,
+  &#39;Raspberries&#39;,
+  &#39;Fresh Asparagus&#39;,
+  &#39;Honeycrisp Apples&#39;,
+  &#39;Sweet Kale Salad Mix&#39;],
+ 129124: [&#39;Organic Baby Spinach&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;100% Recycled Paper Towels&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Extra Virgin Olive Oil&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Feta Cheese Crumbles&#39;,
+  &#39;Large Lemon&#39;],
+ 131280: [&#39;Organic Strawberries&#39;,
+  &#39;Limes&#39;,
+  &#39;Orange Bell Pepper&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Organic Tomato Cluster&#39;,
+  &#39;Blueberries&#39;],
+ 132038: [&#39;Organic Strawberries&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Grape White/Green Seedless&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Limes&#39;,
+  &#39;Orange Bell Pepper&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Whole Milk&#39;],
+ 132551: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Blackberries&#39;,
+  &#39;Fresh Asparagus&#39;,
+  &#39;Organic Lemon&#39;,
+  &#39;Soda&#39;,
+  &#39;Real Mayonnaise&#39;],
+ 133738: [&#39;Organic Avocado&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Cucumber Kirby&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Organic Whole Milk&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Small Bunch Celery&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Organic Strawberries&#39;],
+ 133964: [&#39;Large Lemon&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Basil Pesto&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Original Fresh Stack Crackers&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;No Salt Added Black Beans&#39;],
+ 138067: [&#39;Organic Whole Milk&#39;,
+  &#39;Kale &amp; Spinach Superfood Puffs&#39;,
+  &#39;Shredded Mild Cheddar Cheese&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Granny Smith Apples&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Pure &amp; Natural Sour Cream&#39;,
+  &#39;Cherubs Heavenly Salad Tomatoes&#39;,
+  &#39;Lime&#39;,
+  &#39;Limes&#39;],
+ 138203: [&#39;Organic Avocado&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;,
+  &#39;Yellow Onions&#39;,
+  &#39;Organic Small Bunch Celery&#39;,
+  &#39;Organic Cilantro&#39;,
+  &#39;Organic Tomato Paste&#39;,
+  &#39;Organic Garnet Sweet Potato (Yam)&#39;,
+  &#39;Organic Hass Avocado&#39;],
+ 139656: [&#39;Organic Raspberries&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Granny Smith Apple&#39;,
+  &#39;Organic Cilantro&#39;,
+  &#39;Organic Blackberries&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Banana&#39;],
+ 141719: [&#39;Organic Raspberries&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Organic Ginger Root&#39;,
+  &#39;Organic Cilantro&#39;,
+  &#39;Red Onion&#39;,
+  &#39;Organic Large Extra Fancy Fuji Apple&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;],
+ 147179: [&#39;Organic Avocado&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Basil Pesto&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Whole Milk&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Seedless Red Grapes&#39;,
+  &#39;Organic Baby Arugula&#39;],
+ 151119: [&#39;Large Lemon&#39;,
+  &#39;Banana&#39;,
+  &#39;Pure &amp; Natural Sour Cream&#39;,
+  &#39;Red Onion&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Blueberries&#39;,
+  &#39;Limes&#39;,
+  &#39;Eggo Homestyle Waffles&#39;,
+  &#39;Sauvignon Blanc&#39;,
+  &#39;Elbow Macaroni Pasta&#39;],
+ 151410: [&#39;Organic Strawberries&#39;,
+  &#39;Banana&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Red Vine Tomato&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Cucumber&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Mint&#39;],
+ 151564: [&#39;Organic Strawberries&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Banana&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Original Hummus&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Organic Ginger Root&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Cilantro&#39;],
+ 154852: [&#39;Organic Strawberries&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Cilantro&#39;,
+  &#39;Organic Granny Smith Apple&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Extra Virgin Olive Oil&#39;],
+ 156537: [&#39;Strawberries&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Red Onion&#39;,
+  &#39;Blackberries&#39;,
+  &#39;Beef Loin New York Strip Steak&#39;,
+  &#39;Bunched Cilantro&#39;,
+  &#39;Organic Baby Arugula&#39;,
+  &#39;Cherrios Honey Nut&#39;],
+ 157497: [&#39;Organic Baby Spinach&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Banana&#39;,
+  &#39;Orange Bell Pepper&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Garnet Sweet Potato (Yam)&#39;,
+  &#39;100% Recycled Paper Towels&#39;],
+ 157798: [&#39;Seedless Small Watermelon&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Hass Avocados&#39;,
+  &#39;Seedless Red Grapes&#39;,
+  &#39;Heavy Duty Aluminum Foil&#39;,
+  &#39;Creamy Almond Butter&#39;,
+  &#39;Organic Whole String Cheese&#39;,
+  &#39;Meyer Lemons&#39;,
+  &#39;Brussels Sprouts&#39;,
+  &#39;Brioche Hamburger Buns&#39;],
+ 158373: [&#39;Banana&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Quick Oats&#39;,
+  &#39;Seedless Red Grapes&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Broccoli Florets&#39;,
+  &#39;Organic Lemon&#39;,
+  &#39;Organic Baby Carrots&#39;],
+ 159308: [&#39;Red Onion&#39;,
+  &#39;Blueberries&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Plain Whole Milk Yogurt&#39;,
+  &#39;Orange Bell Pepper&#39;,
+  &#39;Organic Reduced Fat Milk&#39;,
+  &#39;Provolone&#39;,
+  &#39;Seedless Red Grapes&#39;,
+  &#39;Organic Beans &amp; Rice Cheddar Cheese Burrito&#39;,
+  &#39;Supergreens!&#39;],
+ 161574: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Sweet Kale Salad Mix&#39;,
+  &#39;Soda&#39;,
+  &#39;Raspberries&#39;,
+  &#39;Green Bell Pepper&#39;,
+  &#39;Apricots&#39;,
+  &#39;Real Mayonnaise&#39;,
+  &#39;Organic Navel Orange&#39;,
+  &#39;Fat Free Skim Milk&#39;,
+  &#39;Brussels Sprouts&#39;],
+ 166707: [&#39;Organic Baby Carrots&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Small Bunch Celery&#39;,
+  &#39;Yellow Onions&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Ginger Root&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Cucumber Kirby&#39;,
+  &#39;Red Vine Tomato&#39;],
+ 169583: [&#39;Organic Hass Avocado&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Extra Virgin Olive Oil&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Honeycrisp Apple&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Raspberries&#39;,
+  &#39;Basil Pesto&#39;,
+  &#39;Bing Cherries&#39;,
+  &#39;Organic Italian Parsley Bunch&#39;],
+ 177453: [&#39;Banana&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Baby Arugula&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Rainbow Carrots&#39;,
+  &#39;Chocolate Peanut Butter Ice Cream&#39;,
+  &#39;Instant Coffee&#39;,
+  &#39;Organic Medjool Dates&#39;],
+ 179429: [&#39;Banana&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Orange Bell Pepper&#39;,
+  &#39;Organic Cilantro&#39;,
+  &#39;Sustainably Soft Bath Tissue&#39;,
+  &#39;Organic Diced Tomatoes&#39;,
+  &#39;Organic Fuji Apple&#39;,
+  &#39;Strawberries&#39;],
+ 180305: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Whole Milk&#39;,
+  &#39;Asparagus&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;,
+  &#39;Apple Honeycrisp Organic&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Large Lemon&#39;],
+ 180461: [&#39;Organic Black Beans&#39;,
+  &#39;Original Hummus&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Free &amp; Clear Natural Laundry Detergent For Sensitive Skin&#39;,
+  &#39;Organic Blackberries&#39;,
+  &#39;Organic Tomato Paste&#39;,
+  &#39;Basil Pesto&#39;,
+  &#39;Asparagus&#39;,
+  &#39;100% Recycled Paper Towels&#39;,
+  &#39;Extra Virgin Olive Oil&#39;],
+ 182863: [&#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Red Bell Pepper&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Organic Black Beans&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Small Bunch Celery&#39;,
+  &#39;Organic Garnet Sweet Potato (Yam)&#39;,
+  &#34;Organic D&#39;Anjou Pears&#34;],
+ 185153: [&#39;Organic Peeled Whole Baby Carrots&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Cucumber Kirby&#39;,
+  &#39;Blueberries&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Feta Cheese Crumbles&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Tomato Sauce&#39;],
+ 187019: [&#39;Organic Blueberries&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Blackberries&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Limes&#39;,
+  &#39;Organic Lemon&#39;,
+  &#39;Sweet Kale Salad Mix&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Brussels Sprouts&#39;,
+  &#39;Organic Avocado&#39;],
+ 187754: [&#39;Organic Yellow Onion&#39;,
+  &#39;Organic Cilantro&#39;,
+  &#39;Organic Lemon&#39;,
+  &#39;Banana&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Granny Smith Apple&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;,
+  &#39;Frozen Organic Wild Blueberries&#39;,
+  &#39;Organic Black Beans&#39;],
+ 192587: [&#39;Banana&#39;,
+  &#39;Organic Grape Tomatoes&#39;,
+  &#39;Organic Grade A Free Range Large Brown Eggs&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Cucumber Kirby&#39;,
+  &#39;Organic Blueberries&#39;,
+  &#39;Organic Baby Arugula&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Fresh Cauliflower&#39;],
+ 197989: [&#39;Organic Strawberries&#39;,
+  &#39;Organic Cucumber&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Asparagus&#39;,
+  &#39;Extra Virgin Olive Oil&#39;,
+  &#39;Granny Smith Apples&#39;,
+  &#39;Organic Gala Apples&#39;,
+  &#39;Organic Blueberries&#39;],
+ 199124: [&#39;Red Onion&#39;,
+  &#39;Banana&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Classic Hummus&#39;,
+  &#39;Seedless Red Grapes&#39;,
+  &#39;Orange Bell Pepper&#39;,
+  &#39;Organic Strawberries&#39;,
+  &#39;Organic Avocado&#39;,
+  &#39;Blueberries&#39;,
+  &#39;Uncured Genoa Salami&#39;],
+ 200078: [&#39;Large Lemon&#39;,
+  &#39;Jalapeno Peppers&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Carrots&#39;,
+  &#39;Red Onion&#39;,
+  &#39;Orange Bell Pepper&#39;,
+  &#39;Yellow Onions&#39;,
+  &#39;Organic Hass Avocado&#39;,
+  &#39;Organic Peeled Whole Baby Carrots&#39;,
+  &#39;Limes&#39;],
+ 201135: [&#39;Organic Avocado&#39;,
+  &#39;Large Lemon&#39;,
+  &#39;Organic Yellow Onion&#39;,
+  &#39;Organic Garlic&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Original Hummus&#39;,
+  &#39;Organic Whole String Cheese&#39;,
+  &#39;Pineapple Chunks&#39;,
+  &#39;Organic Cucumber&#39;,
+  &#39;Organic Red Onion&#39;],
+ 201870: [&#39;Large Lemon&#39;,
+  &#39;Organic Baby Spinach&#39;,
+  &#39;Strawberries&#39;,
+  &#39;Organic Baby Carrots&#39;,
+  &#39;Organic Half &amp; Half&#39;,
+  &#39;Organic Ginger Root&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Organic Fuji Apple&#39;,
+  &#39;Bag of Organic Bananas&#39;,
+  &#39;Organic Avocado&#39;],
+ 203111: [&#39;Strawberries&#39;,
+  &#39;Packaged Grape Tomatoes&#39;,
+  &#39;Unsweetened Vanilla Almond Breeze&#39;,
+  &#39;Organic Sage&#39;,
+  &#39;Organic Tortilla Chips&#39;,
+  &#39;Soda&#39;,
+  &#39;Vanilla Milk Chocolate Almond Ice Cream Bars Multi-Pack&#39;,
+  &#39;Organic Zucchini&#39;,
+  &#39;Coconut Water&#39;,
+  &#39;Teriyaki &amp; Pineapple Chicken Meatballs&#39;]}</pre>
+        </div>
+
+      </div>
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+        <div class="output_subarea output_stream output_stdout output_text">
+          <pre>CPU times: user 46.5 ms, sys: 2.75 ms, total: 49.2 ms
+Wall time: 1min
+</pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <p>As can be seen above, our collaborative filtering function returns a dictionary of users and their top 10 recommended
+        products. To see how we arrived at the output above, let's break down our function using a speficic example, user
+        4789. For reference, below are the products that this user has been recommended:</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[278]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="n">recommendations</span><span class="p">[</span><span class="mi">4789</span><span class="p">]</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt output_prompt">Out[278]:</div>
+
+
+
+
+        <div class="output_text output_subarea output_execute_result">
+          <pre>[&#39;Organic Granny Smith Apple&#39;,
+ &#39;Limes&#39;,
+ &#39;Organic Green Cabbage&#39;,
+ &#39;Organic Cilantro&#39;,
+ &#39;Creamy Almond Butter&#39;,
+ &#39;Corn Tortillas&#39;,
+ &#39;Organic Grape Tomatoes&#39;,
+ &#39;Unsweetened Almondmilk&#39;,
+ &#39;Organic Blackberries&#39;,
+ &#39;Organic Lacinato (Dinosaur) Kale&#39;]</pre>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <p>The first main component of our collaborative filtering function identifies the top 10 neighbours for user 4789. It
+        does so by creating user pairs, where u1 is always user 4789 and u2 is any other user who has purchased products
+        that u1 has purchased. It then computes the Jaccard index for each user pair, by taking the number of distinct products
+        that u1 and u2 have purchased in common (intersection_count) and dividing it by the number of distinct products that
+        are unique to each user (union_count). The 10 users with the highest Jaccard index are selected as user 4789's neighbourhood.</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[285]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="n">query</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">        // Get count of all distinct products that user 4789 has purchased and find other users who have purchased them</span>
+<span class="s">        MATCH (u1:User)-[:ORDERED]-&gt;(:Order)-[:CONTAINS]-&gt;(p:Product)&lt;-[:CONTAINS]-(:Order)&lt;-[:ORDERED]-(u2:User)</span>
+<span class="s">        WHERE u1 &lt;&gt; u2</span>
+<span class="s">          AND u1.user_id = {uid}</span>
+<span class="s">        WITH u1, u2, COUNT(DISTINCT p) as intersection_count</span>
+<span class="s">        </span>
+<span class="s">        // Get count of all the distinct products that are unique to each user</span>
+<span class="s">        MATCH (u:User)-[:ORDERED]-&gt;(:Order)-[:CONTAINS]-&gt;(p:Product)</span>
+<span class="s">        WHERE u in [u1, u2]</span>
+<span class="s">        WITH u1, u2, intersection_count, COUNT(DISTINCT p) as union_count</span>
+<span class="s">       </span>
+<span class="s">        // Compute Jaccard index</span>
+<span class="s">        WITH u1, u2, intersection_count, union_count, (intersection_count*1.0/union_count) as jaccard_index</span>
+<span class="s">        </span>
+<span class="s">        // Get top k neighbours based on Jaccard index</span>
+<span class="s">        ORDER BY jaccard_index DESC, u2.user_id</span>
+<span class="s">        WITH u1, COLLECT([u2.user_id, jaccard_index, intersection_count, union_count])[0..{k}] as neighbours</span>
+<span class="s">     </span>
+<span class="s">        WHERE LENGTH(neighbours) = {k}                // only want to return users with enough neighbours</span>
+<span class="s">        RETURN u1.user_id as user, neighbours</span>
+<span class="s">        &quot;&quot;&quot;</span>
+
+<span class="n">neighbours</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">g</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="mi">4789</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="n">neighbours</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s">&quot;Labels for user 4789&#39;s neighbour list: user_id, jaccard_index, intersection_count, union count&quot;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">neighbours</span><span class="p">)</span>
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+        <div class="output_subarea output_stream output_stdout output_text">
+          <pre>Labels for user 4789&#39;s neighbour list: user_id, jaccard_index, intersection_count, union count
+</pre>
+        </div>
+      </div>
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+
+
+        <div class="output_text output_subarea ">
+          <pre>{4789: [[42145, 0.12794612794612795, 38, 297],
+  [138203, 0.10497237569060773, 38, 362],
+  [87350, 0.09390862944162437, 37, 394],
+  [49441, 0.0912280701754386, 26, 285],
+  [187754, 0.0912280701754386, 26, 285],
+  [180461, 0.09115281501340483, 34, 373],
+  [120660, 0.08641975308641975, 21, 243],
+  [107931, 0.08360128617363344, 26, 311],
+  [73477, 0.07855626326963906, 37, 471],
+  [154852, 0.0735930735930736, 17, 231]]}</pre>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <p>The second main component of our collaborative filtering function generates recommendations for user 4789 using the
+        neighbours identified above. It does so by considering products that the neighbours have purchased which user 4789
+        has not already purchased. The function then counts the number of neighbours who have purchased each of the candidate
+        products. The 10 products with the highest neighbour count are selected as recommendations for user 4789.</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+  <div class="input">
+    <div class="prompt input_prompt">In&nbsp;[287]:</div>
+    <div class="inner_cell">
+      <div class="input_area">
+        <div class=" highlight hl-ipython3">
+          <pre><span class="o">%%</span><span class="k">time</span>
+query = &quot;&quot;&quot;
+        // Get top n recommendations for user 4789 from the selected neighbours
+        MATCH (u1:User),
+              (neighbour:User)-[:ORDERED]-&gt;(:Order)-[:CONTAINS]-&gt;(p:Product)        // get all products bought by neighbour
+        WHERE u1.user_id = {uid}
+          AND neighbour.user_id in {neighbours}
+          AND not (u1)-[:ORDERED]-&gt;(:Order)-[:CONTAINS]-&gt;(p)                        // which u1 has not already bought
+        
+        WITH u1, p, COUNT(DISTINCT neighbour) as cnt                                // count times purchased by neighbours
+        ORDER BY u1.user_id, cnt DESC                                               // and sort by count desc
+        RETURN u1.user_id as user, COLLECT([p.product_name,cnt])[0..{n}] as recos  
+        &quot;&quot;&quot;
+
+recos = {}
+for row in g.run(query, uid=4789, neighbours=[42145,138203,87350,49441,187754,180461,120660,107931,73477,154852], n=10):
+    recos[row[0]] = row[1]
+    
+print(&quot;Labels for user 4789&#39;s recommendations list: product, number of purchasing neighbours&quot;)
+display(recos)
+</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="output_wrapper">
+    <div class="output">
+
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+        <div class="output_subarea output_stream output_stdout output_text">
+          <pre>Labels for user 4789&#39;s recommendations list: product, number of purchasing neighbours
+</pre>
+        </div>
+      </div>
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+
+
+        <div class="output_text output_subarea ">
+          <pre>{4789: [[&#39;Organic Granny Smith Apple&#39;, 6],
+  [&#39;Limes&#39;, 5],
+  [&#39;Organic Green Cabbage&#39;, 5],
+  [&#39;Organic Cilantro&#39;, 5],
+  [&#39;Creamy Almond Butter&#39;, 5],
+  [&#39;Corn Tortillas&#39;, 5],
+  [&#39;Organic Grape Tomatoes&#39;, 5],
+  [&#39;Unsweetened Almondmilk&#39;, 4],
+  [&#39;Organic Blackberries&#39;, 4],
+  [&#39;Organic Lacinato (Dinosaur) Kale&#39;, 4]]}</pre>
+        </div>
+
+      </div>
+
+      <div class="output_area">
+
+        <div class="prompt"></div>
+
+
+        <div class="output_subarea output_stream output_stdout output_text">
+          <pre>CPU times: user 6.85 ms, sys: 2.08 ms, total: 8.93 ms
+Wall time: 716 ms
+</pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h3 id="Part-5:--Evaluating-Recommender-Performance">Part 5: Evaluating Recommender Performance<a class="anchor-link" href="#Part-5:--Evaluating-Recommender-Performance">&#182;</a></h3>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <p>If we were to actually integrate our recommender system in to a production environment, we would need a way to measure
+        its performance. As mentioned, in the context of a user check-out application for an online grocer, the goal is to
+        increase basket size, by surfacing a short list of products that are as relevant as posssible to the user. For this
+        particular application, we could choose precision as our metric for evaluating our recommender's performance. Precision
+        is computed as the proportion of products that the user actually purchased, out of all the products that user has
+        been recommended. To determine overall recommender performance, average precision can be calculated using the precision
+        values for all the users in the system.</p>
+
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <h3 id="Conclusion">Conclusion<a class="anchor-link" href="#Conclusion">&#182;</a></h3>
+    </div>
+  </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+  <div class="prompt input_prompt">
+  </div>
+  <div class="inner_cell">
+    <div class="text_cell_render border-box-sizing rendered_html">
+      <p>We have demonstrated how to build a user-based recommender system leveraging the principles of user-user collaborative
+        filtering. We've discussed the key concepts underlying this algorithm, from identifying neighbourhoods using a similarity
+        metric, to generating recommendations for a user based on its neighbours' preferences. In addition, we have shown
+        how easy and intuitive modeling connected data can be with a graph database. One final point worth noting: in real
+        world applications, we may want to implement non-personalized recommendation strategies for users who are new to
+        the system and those who have not yet made sufficient purchases. Strategies may include recommending top selling
+        products for new users, and for the latter group, products identified to have high affinity with other products that
+        the user has already purchased. This can be done through association rules mining, also known as market basket analysis.</p>
+
+    </div>
+  </div>
+</div>
+
+  </div>
+  
+  <div class="post">
+    <h1 class="post-title">
       <a href="http://www.datatheque.com/posts/association-analysis/">
         Association Rules Mining Using Python Generators to Handle Large Datasets
       </a>
