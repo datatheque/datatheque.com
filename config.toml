@@ -1,7 +1,6 @@
 baseURL = "http://www.datatheque.com/"
 languageCode = "en-us"
 title = "datathèque"
-theme = "hyde"
 publishDir = "docs"
 
 [[menu.main]]

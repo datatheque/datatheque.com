@@ -26,6 +26,27 @@
 
   
   <link href="http://www.datatheque.com/index.xml" rel="alternate" type="application/rss+xml" title="datathèque" />
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_HTML"></script>
+  
+  <script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+      tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+          displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+          processEscapes: true,
+          processEnvironments: true
+      },
+      // Center justify equations in code and markdown cells. Elsewhere
+      // we use CSS to left justify single line equations in code cells.
+      displayAlign: 'center',
+      "HTML-CSS": {
+          styles: {'.MathJax_Display': {"margin": 0}},
+          linebreaks: { automatic: true }
+      }
+  });
+  </script>
 </head>
 
 <body class=" ">
@@ -107,7 +128,9 @@
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h3 id="Motivation">Motivation<a class="anchor-link" href="#Motivation">&#182;</a></h3>
+      <h3 id="Motivation">Motivation
+        <a class="anchor-link" href="#Motivation">&#182;</a>
+      </h3>
       <p>Recommendation systems fall under two categories: personalized and non-personalized recommenders. My previous post
         on association rules mining is an example of a non-personalized recommender, as the recommendations generated are
         not tailored to a specific user. By contrast, a personalized recommender system takes into account user preferences
@@ -124,7 +147,9 @@
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h3 id="User-User-Collaborative-Filtering">User-User Collaborative Filtering<a class="anchor-link" href="#User-User-Collaborative-Filtering">&#182;</a></h3>
+      <h3 id="User-User-Collaborative-Filtering">User-User Collaborative Filtering
+        <a class="anchor-link" href="#User-User-Collaborative-Filtering">&#182;</a>
+      </h3>
       <p>This personalized recommender algorithm assumes that past agreements predict future agreements. It uses the concept
         of similarity in order to identify users that are "like" the target user in terms of their preferences. Users identified
         as most similar to the target user become part of the target user's neighbourhood. Preferences of these neighbours
@@ -154,11 +179,13 @@
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h3 id="Jaccard-Index">Jaccard Index<a class="anchor-link" href="#Jaccard-Index">&#182;</a></h3>
+      <h3 id="Jaccard-Index">Jaccard Index
+        <a class="anchor-link" href="#Jaccard-Index">&#182;</a>
+      </h3>
       <p>The Jaccard index measures similarity between two sets, with values ranging from 0 to 1. A value of 0 indicates that
         the two sets have no elements in common, while a value of 1 implies that the two sets are identical. Given two sets
         A and B, the Jaccard index is computed as follows:</p>
-      \begin{align*} J(A,B) = \frac{| A \cap B |} {| A \cup B |} \end{align*}
+      $$J(A,B) = \frac{| A \cap B |} {| A \cup B |}$$
       <p>The numerator is the number of elements that A and B have in common, while the denominator is the number of elements
         that are unique to each set.</p>
       <p>In this implementation of user-user collaborative filtering, we will be using the Jaccard index to measure similarity
@@ -181,14 +208,18 @@
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h3 id="Graph-Database">Graph Database<a class="anchor-link" href="#Graph-Database">&#182;</a></h3>
+      <h3 id="Graph-Database">Graph Database
+        <a class="anchor-link" href="#Graph-Database">&#182;</a>
+      </h3>
       <p>A graph database is a way of representing and storing data. Unlike a relational database which represents data as rows
         and columns, data in a graph database is represented using nodes, edges and properties. This representation makes
         graph databases conducive to storing data that is inherently connected. For our implementation of user-user collaborative
         filtering, we are interested in the relationships that exist between users based on their preferences. In particular,
-        we have a system comprised of users who <i>ordered</i> orders, and these orders <i>contain</i> products that are
-        <i>in</i> a department and <i>in</i> an aisle. These relationships are easily depicted using a property graph data
-        model:</p>
+        we have a system comprised of users who
+        <i>ordered</i> orders, and these orders
+        <i>contain</i> products that are
+        <i>in</i> a department and
+        <i>in</i> an aisle. These relationships are easily depicted using a property graph data model:</p>
 
     </div>
   </div>
@@ -198,7 +229,9 @@
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <p><img src="/images/neo4j_property_graph_model.jpeg" alt="Property Graph Model"></p>
+      <p>
+        <img src="/images/neo4j_property_graph_model.jpeg" alt="Property Graph Model">
+      </p>
 
     </div>
   </div>
@@ -229,10 +262,13 @@
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h3 id="Input-Dataset">Input Dataset<a class="anchor-link" href="#Input-Dataset">&#182;</a></h3>
+      <h3 id="Input-Dataset">Input Dataset
+        <a class="anchor-link" href="#Input-Dataset">&#182;</a>
+      </h3>
       <p>Similar to my post on association rules mining, we will once again be using data from Instacart. The datasets can be
         downloaded from the link below, along with the data dictionary:</p>
-      <p>“The Instacart Online Grocery Shopping Dataset 2017”, Accessed from <a href="https://www.instacart.com/datasets/grocery-shopping-2017">https://www.instacart.com/datasets/grocery-shopping-2017</a>        on Oct 10, 2017.</p>
+      <p>“The Instacart Online Grocery Shopping Dataset 2017”, Accessed from
+        <a href="https://www.instacart.com/datasets/grocery-shopping-2017">https://www.instacart.com/datasets/grocery-shopping-2017</a> on Oct 10, 2017.</p>
 
     </div>
   </div>
@@ -242,7 +278,9 @@
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h3 id="Part-1:-Data-Preparation">Part 1: Data Preparation<a class="anchor-link" href="#Part-1:-Data-Preparation">&#182;</a></h3>
+      <h3 id="Part-1:-Data-Preparation">Part 1: Data Preparation
+        <a class="anchor-link" href="#Part-1:-Data-Preparation">&#182;</a>
+      </h3>
     </div>
   </div>
 </div>
@@ -296,7 +334,9 @@
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="A.-Load-user-order-data">A. Load user order data<a class="anchor-link" href="#A.-Load-user-order-data">&#182;</a></h4>
+      <h4 id="A.-Load-user-order-data">A. Load user order data
+        <a class="anchor-link" href="#A.-Load-user-order-data">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -353,25 +393,10 @@
 
 
       <div class="output_area">
-
-        <div class="prompt"></div>
-
-
         <div class="output_subarea output_stream output_stdout output_text">
           <pre>Distribution of number of orders per user:
-</pre>
-        </div>
-      </div>
 
-      <div class="output_area">
-
-        <div class="prompt"></div>
-
-
-
-
-        <div class="output_text output_subarea ">
-          <pre>count    206209.000000
+count    206209.000000
 mean         15.590367
 std          16.654774
 min           3.000000
@@ -379,18 +404,10 @@ min           3.000000
 50%           9.000000
 75%          19.000000
 max          99.000000
-Name: num_orders, dtype: float64</pre>
-        </div>
-
-      </div>
-
-      <div class="output_area">
-
-        <div class="prompt"></div>
+Name: num_orders, dtype: float64
 
 
-        <div class="output_subarea output_stream output_stdout output_text">
-          <pre>order_user --- dimensions: (1901, 5);  size: 0.09 MB
+order_user --- dimensions: (1901, 5);  size: 0.09 MB
 </pre>
         </div>
       </div>
@@ -484,7 +501,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="B.-Load-order-details-data">B. Load order details data<a class="anchor-link" href="#B.-Load-order-details-data">&#182;</a></h4>
+      <h4 id="B.-Load-order-details-data">B. Load order details data
+        <a class="anchor-link" href="#B.-Load-order-details-data">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -591,7 +610,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="C.--Load-product-data">C. Load product data<a class="anchor-link" href="#C.--Load-product-data">&#182;</a></h4>
+      <h4 id="C.--Load-product-data">C. Load product data
+        <a class="anchor-link" href="#C.--Load-product-data">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -710,7 +731,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="D.-Load-aisle-data">D. Load aisle data<a class="anchor-link" href="#D.-Load-aisle-data">&#182;</a></h4>
+      <h4 id="D.-Load-aisle-data">D. Load aisle data
+        <a class="anchor-link" href="#D.-Load-aisle-data">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -816,7 +839,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="E.-Load-department-data">E. Load department data<a class="anchor-link" href="#E.-Load-department-data">&#182;</a></h4>
+      <h4 id="E.-Load-department-data">E. Load department data
+        <a class="anchor-link" href="#E.-Load-department-data">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -922,7 +947,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="F.-Export-dataframes-to-CSV,-which-in-turn-will-be-loaded-into-Neo4j">F. Export dataframes to CSV, which in turn will be loaded into Neo4j<a class="anchor-link" href="#F.-Export-dataframes-to-CSV,-which-in-turn-will-be-loaded-into-Neo4j">&#182;</a></h4>
+      <h4 id="F.-Export-dataframes-to-CSV,-which-in-turn-will-be-loaded-into-Neo4j">F. Export dataframes to CSV, which in turn will be loaded into Neo4j
+        <a class="anchor-link" href="#F.-Export-dataframes-to-CSV,-which-in-turn-will-be-loaded-into-Neo4j">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -950,7 +977,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h3 id="Part-2:--Create-Neo4j-Graph-Database">Part 2: Create Neo4j Graph Database<a class="anchor-link" href="#Part-2:--Create-Neo4j-Graph-Database">&#182;</a></h3>
+      <h3 id="Part-2:--Create-Neo4j-Graph-Database">Part 2: Create Neo4j Graph Database
+        <a class="anchor-link" href="#Part-2:--Create-Neo4j-Graph-Database">&#182;</a>
+      </h3>
     </div>
   </div>
 </div>
@@ -959,7 +988,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="A.-Set-up-authentication-and-connection-to-Neo4j">A. Set up authentication and connection to Neo4j<a class="anchor-link" href="#A.-Set-up-authentication-and-connection-to-Neo4j">&#182;</a></h4>
+      <h4 id="A.-Set-up-authentication-and-connection-to-Neo4j">A. Set up authentication and connection to Neo4j
+        <a class="anchor-link" href="#A.-Set-up-authentication-and-connection-to-Neo4j">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -990,7 +1021,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="B.-Start-with-an-empty-database,-then-create-constraints-to-ensure-uniqueness-of-nodes">B. Start with an empty database, then create constraints to ensure uniqueness of nodes<a class="anchor-link" href="#B.-Start-with-an-empty-database,-then-create-constraints-to-ensure-uniqueness-of-nodes">&#182;</a></h4>
+      <h4 id="B.-Start-with-an-empty-database,-then-create-constraints-to-ensure-uniqueness-of-nodes">B. Start with an empty database, then create constraints to ensure uniqueness of nodes
+        <a class="anchor-link" href="#B.-Start-with-an-empty-database,-then-create-constraints-to-ensure-uniqueness-of-nodes">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -1048,7 +1081,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="C.-Load-product-data-into-Neo4j">C. Load product data into Neo4j<a class="anchor-link" href="#C.-Load-product-data-into-Neo4j">&#182;</a></h4>
+      <h4 id="C.-Load-product-data-into-Neo4j">C. Load product data into Neo4j
+        <a class="anchor-link" href="#C.-Load-product-data-into-Neo4j">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -1108,7 +1143,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="D.-Load-aisle-data-into-Neo4j">D. Load aisle data into Neo4j<a class="anchor-link" href="#D.-Load-aisle-data-into-Neo4j">&#182;</a></h4>
+      <h4 id="D.-Load-aisle-data-into-Neo4j">D. Load aisle data into Neo4j
+        <a class="anchor-link" href="#D.-Load-aisle-data-into-Neo4j">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -1162,7 +1199,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="E.-Load-department-data-into-Neo4j">E. Load department data into Neo4j<a class="anchor-link" href="#E.-Load-department-data-into-Neo4j">&#182;</a></h4>
+      <h4 id="E.-Load-department-data-into-Neo4j">E. Load department data into Neo4j
+        <a class="anchor-link" href="#E.-Load-department-data-into-Neo4j">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -1216,7 +1255,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="F.-Load-order-details-data-into-Neo4j">F. Load order details data into Neo4j<a class="anchor-link" href="#F.-Load-order-details-data-into-Neo4j">&#182;</a></h4>
+      <h4 id="F.-Load-order-details-data-into-Neo4j">F. Load order details data into Neo4j
+        <a class="anchor-link" href="#F.-Load-order-details-data-into-Neo4j">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -1272,7 +1313,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="G.-Load-user-order-data--into-Neo4j">G. Load user order data into Neo4j<a class="anchor-link" href="#G.-Load-user-order-data--into-Neo4j">&#182;</a></h4>
+      <h4 id="G.-Load-user-order-data--into-Neo4j">G. Load user order data into Neo4j
+        <a class="anchor-link" href="#G.-Load-user-order-data--into-Neo4j">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -1333,7 +1376,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h4 id="H.-What-our-graph-looks-like">H. What our graph looks like<a class="anchor-link" href="#H.-What-our-graph-looks-like">&#182;</a></h4>
+      <h4 id="H.-What-our-graph-looks-like">H. What our graph looks like
+        <a class="anchor-link" href="#H.-What-our-graph-looks-like">&#182;</a>
+      </h4>
     </div>
   </div>
 </div>
@@ -1354,7 +1399,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <p><img src="/images/neo4j_instacart_graph.jpeg" alt="Instacart Graph"></p>
+      <p>
+        <img src="/images/neo4j_instacart_graph.jpeg" alt="Instacart Graph">
+      </p>
 
     </div>
   </div>
@@ -1364,7 +1411,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h3 id="Part-3:-Implement-User-User-Collaborative-Filtering-Algorithm">Part 3: Implement User-User Collaborative Filtering Algorithm<a class="anchor-link" href="#Part-3:-Implement-User-User-Collaborative-Filtering-Algorithm">&#182;</a></h3>
+      <h3 id="Part-3:-Implement-User-User-Collaborative-Filtering-Algorithm">Part 3: Implement User-User Collaborative Filtering Algorithm
+        <a class="anchor-link" href="#Part-3:-Implement-User-User-Collaborative-Filtering-Algorithm">&#182;</a>
+      </h3>
     </div>
   </div>
 </div>
@@ -1430,7 +1479,9 @@ Name: num_orders, dtype: float64</pre>
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h3 id="Part-4:-Execute-User-User-Collaborative-Filtering">Part 4: Execute User-User Collaborative Filtering<a class="anchor-link" href="#Part-4:-Execute-User-User-Collaborative-Filtering">&#182;</a></h3>
+      <h3 id="Part-4:-Execute-User-User-Collaborative-Filtering">Part 4: Execute User-User Collaborative Filtering
+        <a class="anchor-link" href="#Part-4:-Execute-User-User-Collaborative-Filtering">&#182;</a>
+      </h3>
     </div>
   </div>
 </div>
@@ -1463,7 +1514,7 @@ display(recommendations)
     </div>
   </div>
 
-  <div class="output_wrapper">
+  <div class="output_wrapper" style="overflow: scroll; height: 500px;">
     <div class="output">
 
 
@@ -2608,19 +2659,9 @@ Wall time: 1min
 
         <div class="output_subarea output_stream output_stdout output_text">
           <pre>Labels for user 4789&#39;s neighbour list: user_id, jaccard_index, intersection_count, union count
-</pre>
-        </div>
-      </div>
 
-      <div class="output_area">
-
-        <div class="prompt"></div>
-
-
-
-
-        <div class="output_text output_subarea ">
-          <pre>{4789: [[42145, 0.12794612794612795, 38, 297],
+  
+{4789: [[42145, 0.12794612794612795, 38, 297],
   [138203, 0.10497237569060773, 38, 362],
   [87350, 0.09390862944162437, 37, 394],
   [49441, 0.0912280701754386, 26, 285],
@@ -2695,19 +2736,9 @@ display(recos)
 
         <div class="output_subarea output_stream output_stdout output_text">
           <pre>Labels for user 4789&#39;s recommendations list: product, number of purchasing neighbours
-</pre>
-        </div>
-      </div>
-
-      <div class="output_area">
-
-        <div class="prompt"></div>
 
 
-
-
-        <div class="output_text output_subarea ">
-          <pre>{4789: [[&#39;Organic Granny Smith Apple&#39;, 6],
+{4789: [[&#39;Organic Granny Smith Apple&#39;, 6],
   [&#39;Limes&#39;, 5],
   [&#39;Organic Green Cabbage&#39;, 5],
   [&#39;Organic Cilantro&#39;, 5],
@@ -2716,18 +2747,10 @@ display(recos)
   [&#39;Organic Grape Tomatoes&#39;, 5],
   [&#39;Unsweetened Almondmilk&#39;, 4],
   [&#39;Organic Blackberries&#39;, 4],
-  [&#39;Organic Lacinato (Dinosaur) Kale&#39;, 4]]}</pre>
-        </div>
+  [&#39;Organic Lacinato (Dinosaur) Kale&#39;, 4]]}
+  
 
-      </div>
-
-      <div class="output_area">
-
-        <div class="prompt"></div>
-
-
-        <div class="output_subarea output_stream output_stdout output_text">
-          <pre>CPU times: user 6.85 ms, sys: 2.08 ms, total: 8.93 ms
+CPU times: user 6.85 ms, sys: 2.08 ms, total: 8.93 ms
 Wall time: 716 ms
 </pre>
         </div>
@@ -2742,7 +2765,9 @@ Wall time: 716 ms
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h3 id="Part-5:--Evaluating-Recommender-Performance">Part 5: Evaluating Recommender Performance<a class="anchor-link" href="#Part-5:--Evaluating-Recommender-Performance">&#182;</a></h3>
+      <h3 id="Part-5:--Evaluating-Recommender-Performance">Part 5: Evaluating Recommender Performance
+        <a class="anchor-link" href="#Part-5:--Evaluating-Recommender-Performance">&#182;</a>
+      </h3>
     </div>
   </div>
 </div>
@@ -2767,7 +2792,9 @@ Wall time: 716 ms
   </div>
   <div class="inner_cell">
     <div class="text_cell_render border-box-sizing rendered_html">
-      <h3 id="Conclusion">Conclusion<a class="anchor-link" href="#Conclusion">&#182;</a></h3>
+      <h3 id="Conclusion">Conclusion
+        <a class="anchor-link" href="#Conclusion">&#182;</a>
+      </h3>
     </div>
   </div>
 </div>

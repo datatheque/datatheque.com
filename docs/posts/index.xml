@@ -17,7 +17,7 @@
       <pubDate>Sun, 05 Nov 2017 16:03:03 -0500</pubDate>
       
       <guid>http://www.datatheque.com/posts/collaborative-filtering/</guid>
-      <description>Motivation&amp;#182; Recommendation systems fall under two categories: personalized and non-personalized recommenders. My previous post on association rules mining is an example of a non-personalized recommender, as the recommendations generated are not tailored to a specific user. By contrast, a personalized recommender system takes into account user preferences in order to make recommendations for that user. There are various personalized recommender algorithms, and in this post, I will be implementing user-user collaborative filtering.</description>
+      <description>Motivation &amp;#182;  Recommendation systems fall under two categories: personalized and non-personalized recommenders. My previous post on association rules mining is an example of a non-personalized recommender, as the recommendations generated are not tailored to a specific user. By contrast, a personalized recommender system takes into account user preferences in order to make recommendations for that user. There are various personalized recommender algorithms, and in this post, I will be implementing user-user collaborative filtering.</description>
     </item>
     
     <item>
