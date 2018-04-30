@@ -97,6 +97,7 @@ pre {
 }
 
 .about > .image {
+    margin-top: 7px;
     flex: 0 0 200px;
 }
 
