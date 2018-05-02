@@ -2,30 +2,30 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Posts on datathèque</title>
-    <link>http://www.datatheque.com/posts/</link>
+    <link>https://www.datatheque.com/posts/</link>
     <description>Recent content in Posts on datathèque</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Sun, 05 Nov 2017 16:03:03 -0500</lastBuildDate>
     
-	<atom:link href="http://www.datatheque.com/posts/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://www.datatheque.com/posts/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
       <title>User-User Collaborative Filtering Using Neo4j Graph Database</title>
-      <link>http://www.datatheque.com/posts/collaborative-filtering/</link>
+      <link>https://www.datatheque.com/posts/collaborative-filtering/</link>
       <pubDate>Sun, 05 Nov 2017 16:03:03 -0500</pubDate>
       
-      <guid>http://www.datatheque.com/posts/collaborative-filtering/</guid>
+      <guid>https://www.datatheque.com/posts/collaborative-filtering/</guid>
       <description>Motivation &amp;#182;  Recommendation systems fall under two categories: personalized and non-personalized recommenders. My previous post on association rules mining is an example of a non-personalized recommender, as the recommendations generated are not tailored to a specific user. By contrast, a personalized recommender system takes into account user preferences in order to make recommendations for that user. There are various personalized recommender algorithms, and in this post, I will be implementing user-user collaborative filtering.</description>
     </item>
     
     <item>
       <title>Association Rules Mining Using Python Generators to Handle Large Datasets</title>
-      <link>http://www.datatheque.com/posts/association-analysis/</link>
+      <link>https://www.datatheque.com/posts/association-analysis/</link>
       <pubDate>Tue, 12 Sep 2017 21:17:08 -0400</pubDate>
       
-      <guid>http://www.datatheque.com/posts/association-analysis/</guid>
+      <guid>https://www.datatheque.com/posts/association-analysis/</guid>
       <description>Motivation&amp;#182; I was looking to run association analysis in Python using the apriori algorithm to derive rules of the form {A} -&amp;gt; {B}. However, I quickly discovered that it&#39;s not part of the standard Python machine learning libraries. Although there are some implementations that exist, I could not find one capable of handling large datasets. &#34;Large&#34; in my case was an orders dataset with 32 million records, containing 3.2 million unique orders and about 50K unique items (file size just over 1 GB).</description>
     </item>
     

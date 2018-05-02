@@ -1,4 +1,4 @@
-baseURL = "http://www.datatheque.com/"
+baseURL = "https://www.datatheque.com/"
 languageCode = "en-us"
 title = "datathèque"
 publishDir = "docs"

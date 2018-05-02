@@ -3,37 +3,37 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>http://www.datatheque.com/posts/collaborative-filtering/</loc>
+    <loc>https://www.datatheque.com/posts/collaborative-filtering/</loc>
     <lastmod>2017-11-05T16:03:03-05:00</lastmod>
   </url>
   
   <url>
-    <loc>http://www.datatheque.com/posts/association-analysis/</loc>
+    <loc>https://www.datatheque.com/posts/association-analysis/</loc>
     <lastmod>2017-09-12T21:17:08-04:00</lastmod>
   </url>
   
   <url>
-    <loc>http://www.datatheque.com/categories/</loc>
+    <loc>https://www.datatheque.com/categories/</loc>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>http://www.datatheque.com/about/</loc>
+    <loc>https://www.datatheque.com/about/</loc>
   </url>
   
   <url>
-    <loc>http://www.datatheque.com/posts/</loc>
+    <loc>https://www.datatheque.com/posts/</loc>
     <lastmod>2017-11-05T16:03:03-05:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>http://www.datatheque.com/tags/</loc>
+    <loc>https://www.datatheque.com/tags/</loc>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>http://www.datatheque.com/</loc>
+    <loc>https://www.datatheque.com/</loc>
     <lastmod>2017-11-05T16:03:03-05:00</lastmod>
     <priority>0</priority>
   </url>
