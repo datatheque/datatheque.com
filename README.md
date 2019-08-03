@@ -35,3 +35,8 @@ Don't forget to toggle `draft` to `false` in front matter to make post public
 ```bash
 hugo
 ```
+
+#### Publish
+Hugo publishes the site to the `docs` directory and Github is set up to serve the site
+there.  Once the `docs` directory has been committed, pushing to Github will publish 
+the site.
